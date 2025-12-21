@@ -24,6 +24,7 @@ out/
 *.iml
 *.swp
 *.swo
+.trae/
 
 # ============ OS ============
 .DS_Store
