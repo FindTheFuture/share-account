@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 定义全局属性 -->
+    <property name="LOG_PATH" value="./logs"/>
+    <property name="LOG_FILE" value="shareaccount"/>
+    <property name="pattern" value="[%d{yyyy-MM-dd HH:mm:ss.SSS}][%thread][%highlight(%-5level)][%logger{36}][userId=%red(%X{userId})][traceId=%green(%X{traceId})][userIp=%X{userIp}][httpMethod=%X{httpMethod}][url=%X{url}][responseStatus=%blue(%X{responseStatus})][duration=%X{duration}ms] - %msg%n"/>
+
+    <!-- 控制台日志输出 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                ${pattern}
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- 文件日志输出 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${LOG_FILE}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 每天生成一个新的日志文件 -->
+            <fileNamePattern>${LOG_PATH}/%d{yyyy-MM-dd}/${LOG_FILE}-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>5</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>
+                ${pattern}
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- 日志级别和输出位置 -->
+    <root level="info">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- 特定包的日志级别
+    <logger name="cn.lizongyi.water_shop" level="debug" additivity="false">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </logger> -->
+</configuration>

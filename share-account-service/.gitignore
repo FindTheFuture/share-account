@@ -1,0 +1,48 @@
+# ============ Java / Maven / Gradle ============
+target/
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+*.log
+
+# ============ Node.js / Frontend ============
+node_modules/
+.env
+.env.local
+.env.*
+npm-debug.log*
+yarn-error.log*
+dist/
+build/
+.next/
+.nuxt/
+out/
+
+# ============ IDE ============
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+
+# ============ OS ============
+.DS_Store
+Thumbs.db
+
+# ============ Sensitive Files ============
+*.p12
+*.pem
+*.key
+*.cert
+apiclient_*
+wechatpay_*.pem
+
+# ============ Logs ============
+logs/
+*.log
+
+# ============ Other ============
+*.tmp
+*.temp
+itbox/
+"*/星鉴*"
