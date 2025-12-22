@@ -2,7 +2,7 @@
 const config = {
     // 后端服务器的基础URL
     baseUrl: 'http://localhost:8999/shareaccount',  // dev
-    //baseUrl: 'https://www.shangmao.site/shareaccount',  // prod
+    baseUrl: 'https://www.shangmao.site/shareaccount',  // prod
 	
     // 定义各个API接口的相对路径
     endpoints: {

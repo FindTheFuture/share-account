@@ -176,7 +176,7 @@ public class HourlyReportScheduler {
                     Message message = new Message();
                     message.setTitle("小时报");
                     message.setContent(messageContent);
-                    message.setType(1); // 系统消息类型
+                    message.setType(2); // 业务消息类型
                     message.setPriority(0);
                     message.setStatus(0);
                     message.setCreatedAt(new Date());

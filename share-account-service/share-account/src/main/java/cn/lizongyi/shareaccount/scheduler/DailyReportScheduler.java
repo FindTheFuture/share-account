@@ -283,7 +283,7 @@ public class DailyReportScheduler {
                 Message message = new Message();
                 message.setTitle("昨天日报");
                 message.setContent(content);
-                message.setType(1);
+                message.setType(2); // 业务消息类型
                 message.setPriority(0);
                 message.setStatus(0);
                 message.setCreatedAt(new Date());
