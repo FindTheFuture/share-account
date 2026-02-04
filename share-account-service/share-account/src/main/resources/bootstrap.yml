@@ -1,8 +1,0 @@
-spring:
-  application:
-    name: share-account
-
-  main:
-    allow-bean-definition-overriding: true
-    allow-circular-references: true
-
