@@ -8,7 +8,7 @@
       <text class="guide-text">{{ card.content }}</text>
     </view>
     <view class="guide-footer">
-      <button class="guide-cta" @click="handleCta">{{ card.ctaText || '去升级' }}</button>
+      <button class="guide-cta" @click="handleCta">{{ card.ctaText || '去登录' }}</button>
     </view>
   </view>
 </template>
@@ -26,81 +26,13 @@ export default {
   },
   methods: {
     handleCta() {
-      // 优先尝试“游客升级为正式用户”，失败（例如已绑定其他账号）再跳转登录页
-      uni.showLoading({ title: '升级中...' });
       try {
-        uni.login({
-          provider: 'weixin',
-          success: ({ code }) => {
-            if (!code) {
-              uni.hideLoading();
-              uni.showToast({ title: '获取微信code失败', icon: 'none' });
-              return;
-            }
-
-            const token = uni.getStorageSync('token');
-            const additionalId = uni.getStorageSync('additionalId');
-
-            uni.request({
-              url: `${$backUrlConfig.baseUrl}${$backUrlConfig.endpoints.login_upgrade}`,
-              method: 'POST',
-              header: {
-                'content-type': 'application/json',
-                ...(token ? { 'Aboluo': `Aboluo ${token}` } : {}),
-                ...(additionalId ? { 'Additional': `${additionalId}` } : {})
-              },
-              data: { code },
-              success: (res) => {
-                const body = res.data || {};
-                if (res.statusCode === 200 && body && body.code === 200 && body.data) {
-                  const { token, refresh_token, expires_in, additionalId: newAdditionalId, thunder, canSendMessage } = body.data;
-                  // 持久化令牌与用户信息
-                  uni.setStorageSync('token', token);
-                  uni.setStorageSync('additionalId', newAdditionalId);
-                  uni.setStorageSync('refreshToken', refresh_token);
-                  const expireAt = Date.now() + (expires_in || 0) * 1000;
-                  uni.setStorageSync('expireAt', expireAt);
-                  uni.setStorageSync('thunder', thunder);
-                  uni.setStorageSync('canSendMessage', canSendMessage);
-                  // 标记非游客并清理引导卡
-                  uni.setStorageSync('isGuest', false);
-                  uni.removeStorageSync('guideCard');
-
-                  uni.hideLoading();
-                  uni.showToast({ title: '升级成功', icon: 'success', duration: 1500 });
-
-                  // 跳转首页
-                  setTimeout(() => {
-                    uni.switchTab({ url: '/pages/firstpage/firstpage' });
-                  }, 500);
-                } else {
-                  const msg = (body && body.message) ? body.message : '升级失败，请稍后再试';
-                  uni.hideLoading();
-                  uni.showToast({ title: msg, icon: 'none', duration: 2000 });
-
-                  // 若已绑定其他账号，分流到登录页
-                  if (msg.includes('已绑定其他账号')) {
-                    setTimeout(() => {
-                      uni.navigateTo({ url: '/pages/login/login' });
-                    }, 500);
-                  }
-                }
-              },
-              fail: (err) => {
-                console.error('调用升级接口失败:', err);
-                uni.hideLoading();
-                uni.showToast({ title: '网络连接失败', icon: 'none' });
-              }
-            });
-          },
-          fail: (e) => {
-            uni.hideLoading();
-            uni.showToast({ title: '获取微信登录态失败', icon: 'none' });
-          }
-        });
+        // 直接跳转到登录页面
+        uni.navigateTo({ url: '/pages/login/login' });
       } catch (e) {
-        uni.hideLoading();
-        uni.showToast({ title: '升级过程异常', icon: 'none' });
+        console.error('操作过程异常:', e);
+        // 即使出错也要跳转到登录页面
+        uni.navigateTo({ url: '/pages/login/login' });
       }
     }
   }

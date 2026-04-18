@@ -22,8 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import cn.lizongyi.shareaccount.dao.ClassEntityMapper;
-import cn.lizongyi.shareaccount.entity.ClassEntity;
 
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -339,7 +337,12 @@ public class BaseHandler {
      * 获取userId
      */
     public Long getUserId(){
-        return userIdService.getUserId();
+        try{
+            return userIdService.getUserId();
+        }catch (Exception e){
+            log.error("从request中没有获取到userId", e);
+            return null;
+        }
     }
 
 

@@ -12,6 +12,11 @@ public class CreateBillRequest {
     private Long id;
 
     /**
+     * 用户id
+     */
+    private Long userId;
+
+    /**
      * 账本id
      */
     private Long ledgerId;

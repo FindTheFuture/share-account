@@ -196,9 +196,18 @@ export default {
     // 悬浮新增按钮点击（游客模式拦截）
     onFloatingAddClick() {
       if (this.isGuest) {
-        uni.showToast({
-          title: '游客模式不允许新增账户',
-          icon: 'none'
+        uni.showModal({
+          title: '提示',
+          content: '请登录后新增账户',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
         });
         return;
       }
@@ -209,6 +218,23 @@ export default {
      * 跳转到编辑账户页面
      */
     navigateToEditAccount(account) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后编辑账户',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       uni.navigateTo({
         url: `/pages/account/editAccount?id=${account.id}`
       });
@@ -218,6 +244,23 @@ export default {
      * 查看账户详情
      */
     showAccountDetail(account) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后查看账户详情',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       uni.navigateTo({
         url: `/pages/account/accountDetail?id=${account.id}`
       });
@@ -256,6 +299,23 @@ export default {
      * 处理账户状态变更
      */
     handleStatusChange(account) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后修改账户状态',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       this.currentAccount = account;
       this.confirmActionType = 'status';
       this.confirmTitle = account.status === 0 ? '确认停用账户' : '确认启用账户';
@@ -380,6 +440,18 @@ export default {
 
 .account-list {
   padding: 20rpx;
+}
+
+.form-title {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  padding: 24rpx 30rpx;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  text-align: center;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.3);
 }
 
 .account-item {

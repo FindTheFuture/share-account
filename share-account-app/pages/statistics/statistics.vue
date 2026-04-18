@@ -139,12 +139,14 @@
               <text class="cell">总收入</text>
               <text class="cell">总支出</text>
               <text class="cell">结余</text>
+              <text v-show="dimension === 'year'" class="cell">预算</text>
             </view>
           <view class="table-row" v-for="(row, idx) in (dimension === 'year' ? monthRows : dayRows)" :key="idx">
             <text class="cell cell-time">{{ row.label }}</text>
             <text class="cell">{{ formatAmount(row.income) }}</text>
             <text class="cell">{{ formatAmount(row.expense) }}</text>
             <text class="cell">{{ formatAmount(row.balance) }}</text>
+            <text v-show="dimension === 'year'" class="cell">{{ formatAmount(row.budgetTotal) }}({{ row.budgetUsageRate }}%)</text>
           </view>
         </view>
       </view>
@@ -163,6 +165,8 @@
       <view class="overlay-side">
         <view :class="['filter-tag', pieType === 'expense' ? 'selected' : '']" @tap="setPieType('expense')">支出</view>
         <view :class="['filter-tag', pieType === 'income' ? 'selected' : '']" @tap="setPieType('income')">收入</view>
+        <view v-if="fullscreenMode === 'trend' && dimension === 'year'" :class="['filter-tag', pieType === 'budgetTotal' ? 'selected' : '']" @tap="setPieType('budgetTotal')">预算总额</view>
+        <view v-if="fullscreenMode === 'trend' && dimension === 'year'" :class="['filter-tag', pieType === 'budgetUsageRate' ? 'selected' : '']" @tap="setPieType('budgetUsageRate')">预算使用率</view>
       </view>
       <view class="overlay-content">
         <qiun-data-charts v-if="pieHasData" :key="pieRenderKey" type="pie" :ontap="true" :ontouch="true" :tapLegend="true" :inScrollView="true" :pageScrollTop="chartScrollTop" :opts="pieOpts" :chartData="pieChartData" />
@@ -175,7 +179,7 @@
     <LedgerSelectPopup
       ref="ledgerPopup"
       :selectedLedger="selectedLedger"
-      :autoSelectDefault="false"
+      :autoSelectDefault="true"
       @select="onLedgerSelected"
     />
 
@@ -296,7 +300,7 @@ export default {
       // 全屏遮罩与饼图
       fullscreenVisible: false,
       fullscreenMode: 'category', // 'category' | 'trend'
-      pieType: 'expense', // 'expense' | 'income'
+      pieType: 'expense', // 'expense' | 'income' | 'budgetTotal' | 'budgetUsageRate'
       orientationLandscape: false,
       pieChartData: { categories: [], series: [] },
       pieOpts: {
@@ -377,6 +381,10 @@ export default {
     }
     if (this.$refs.categorySelect && this.$refs.categorySelect.refreshIfNeeded) {
       this.$refs.categorySelect.refreshIfNeeded();
+    }
+    // 自动选择默认账本
+    if (this.$refs.ledgerPopup && this.$refs.ledgerPopup.initAutoSelect) {
+      this.$refs.ledgerPopup.initAutoSelect();
     }
     this.fetchStatistics();
   },
@@ -618,17 +626,23 @@ export default {
           balance: balanceArr[idx] || 0
         }));
       } else if (this.dimension === 'year') {
-        // 月度三线图 + 月度列表
+        // 月度三线图 + 月度列表，增加预算总额折线（仅月度展示）
+        const budgetTotalArr = items.map(t => Number(t.budgetTotal || 0) / 100);
+        const budgetUsageRateArr = items.map(t => Number((t.budgetUsageRate || 0) * 100).toFixed(1));
         this.monthLineChartData = { categories, series: [
           { name: '收入', data: incomeArr },
           { name: '支出', data: expenseArr },
-          { name: '结余', data: balanceArr }
+          { name: '结余', data: balanceArr },
+          { name: '预算总额', data: budgetTotalArr },
+          { name: '预算使用率(%)', data: budgetUsageRateArr }
         ] };
         this.monthRows = categories.map((label, idx) => ({
           label,
           income: incomeArr[idx] || 0,
           expense: expenseArr[idx] || 0,
-          balance: balanceArr[idx] || 0
+          balance: balanceArr[idx] || 0,
+          budgetTotal: budgetTotalArr[idx] || 0,
+          budgetUsageRate: budgetUsageRateArr[idx] || 0
         }));
       } else if (this.dimension === 'month' || this.dimension === 'custom') {
         // 每日三线图 + 日列表
@@ -689,7 +703,8 @@ export default {
       this.buildPieData();
     },
     setPieType(type) {
-      const next = type === 'income' ? 'income' : 'expense';
+      const validTypes = ['income', 'expense', 'budgetTotal', 'budgetUsageRate'];
+      const next = validTypes.includes(type) ? type : 'expense';
       if (this.pieType !== next) {
         this.pieType = next;
         this.buildPieData();
@@ -715,14 +730,29 @@ export default {
         const base = this.dimension === 'year' ? this.monthLineChartData : this.dayLineChartData;
         labels = Array.isArray(base?.categories) ? base.categories : [];
         const seriesArr = Array.isArray(base?.series) ? base.series : [];
-        const target = seriesArr.find(s => (this.pieType === 'income' ? /收入/.test(s.name) : /支出/.test(s.name)));
+        
+        // 根据 pieType 选择对应的数据系列
+        let target;
+        if (this.pieType === 'budgetTotal') {
+          target = seriesArr.find(s => /预算总额/.test(s.name));
+        } else if (this.pieType === 'budgetUsageRate') {
+          target = seriesArr.find(s => /预算使用率/.test(s.name));
+        } else {
+          target = seriesArr.find(s => (this.pieType === 'income' ? /收入/.test(s.name) : /支出/.test(s.name)));
+        }
         const dataArr = Array.isArray(target?.data) ? target.data : [];
         values = dataArr;
       }
       const series = labels.map((name, idx) => ({ name, data: Number(values[idx] || 0) }));
       const total = series.reduce((sum, it) => sum + (isNaN(it.data) ? 0 : it.data), 0);
       if (total <= 0) {
-        this.pieEmptyMessage = `当前范围内暂无${this.pieType === 'income' ? '收入' : '支出'}数据`;
+        const typeNameMap = {
+          'income': '收入',
+          'expense': '支出',
+          'budgetTotal': '预算总额',
+          'budgetUsageRate': '预算使用率'
+        };
+        this.pieEmptyMessage = `当前范围内暂无${typeNameMap[this.pieType] || '支出'}数据`;
         this.pieChartData = { series: [] };
         return;
       }
@@ -760,9 +790,9 @@ export default {
 .card.count .card-value { color: #f5222d; }
 
 /* 列表美化 */
-.table { display: block; }
-.table-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12rpx; background: #FAFAFA; border: 1px solid #F0F0F0; border-radius: 12rpx; padding: 16rpx; }
-.table-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12rpx; background: #fff; border-radius: 12rpx; padding: 16rpx; }
+.table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+.table-header { display: grid; grid-template-columns: 160rpx 140rpx 140rpx 140rpx 240rpx; gap: 12rpx; background: #FAFAFA; border: 1px solid #F0F0F0; border-radius: 12rpx; padding: 16rpx; min-width: 700rpx; }
+.table-row { display: grid; grid-template-columns: 160rpx 140rpx 140rpx 140rpx 240rpx; gap: 12rpx; background: #fff; border-radius: 12rpx; padding: 16rpx; min-width: 700rpx; }
 .table-row:nth-child(even) { background: #FCFEFF; }
 .cell { color: #333; font-size: 28rpx; }
 .cell-time { font-weight: 600; color: #555; }

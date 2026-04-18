@@ -17,6 +17,11 @@
         {
             "openVueDevtools" : false,
             "type" : "uni-app:miniProgram"
+        },
+        {
+            "customPlaygroundType" : "device",
+            "playground" : "custom",
+            "type" : "uni-app:app-android"
         }
     ]
 }

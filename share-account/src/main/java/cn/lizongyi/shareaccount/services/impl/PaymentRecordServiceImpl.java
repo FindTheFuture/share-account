@@ -66,6 +66,12 @@ public class PaymentRecordServiceImpl implements PaymentRecordService {
         Long userId = baseHandler.getUserId();
         log.info("创建支付记录，userId: {}, packageId: {}", userId, request.getPackageId());
 
+        boolean isGuest = baseHandler.isGuestUser(userId);
+        if (isGuest) {
+            log.error("游客模式不允许创建支付记录");
+            return null;
+        }
+
         MemberPackageResponse memberPackage = memberPackageService.findById(request.getPackageId());
         if (memberPackage == null) {
             log.error("会员套餐不存在，packageId: {}", request.getPackageId());

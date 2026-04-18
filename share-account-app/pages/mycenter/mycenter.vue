@@ -22,7 +22,7 @@
         </view>
       </view>
       <view class="member-level-icon" @click.stop="navigateToVipMember">
-        {{ userInfo.memberLevelIcon || '☀️' }}
+        <custom-icon type="fufeihuiyuan" :size="32" color="#ffd700"></custom-icon>
       </view>
     </view>
 
@@ -107,11 +107,13 @@
 
 <script>
   import UserAvatar from '@/components/user-avatar.vue'
-import messageService from '../../common/messageService.js'
+  import CustomIcon from '@/components/custom-icon/custom-icon.vue'
+  import messageService from '../../common/messageService.js'
   
   export default {
     components: {
-      UserAvatar
+      UserAvatar,
+      CustomIcon
     },
 
     data() {
@@ -220,69 +222,14 @@ import messageService from '../../common/messageService.js'
     },
     
     // 游客升级为正式用户
-    async upgradeToNormal() {
+    upgradeToNormal() {
       try {
-        uni.showLoading({ title: '升级中...' });
-        // 仅在小程序或App中可用
-        await new Promise((resolve, reject) => {
-          uni.login({
-            provider: 'weixin',
-            success: resolve,
-            fail: reject
-          });
-        }).then(async (loginRes) => {
-          const code = loginRes.code;
-          if (!code) {
-            uni.hideLoading();
-            throw new Error('获取微信code失败');
-          }
-          const res = await this.$request({
-            url: this.$backUrlConfig.endpoints.login_upgrade,
-            method: 'POST',
-            data: { code }
-          });
-          if (res && res.token) {
-            // 持久化令牌与用户信息（与登录页/引导卡保持一致）
-            const { token, refresh_token, expires_in, additionalId: newAdditionalId, thunder, canSendMessage } = res;
-            uni.setStorageSync('token', token);
-            uni.setStorageSync('additionalId', newAdditionalId);
-            uni.setStorageSync('refreshToken', refresh_token);
-            const expireAt = Date.now() + (expires_in || 0) * 1000;
-            uni.setStorageSync('expireAt', expireAt);
-            uni.setStorageSync('thunder', thunder);
-            uni.setStorageSync('canSendMessage', canSendMessage);
-            // 标记非游客并清理引导卡
-            uni.setStorageSync('isGuest', false);
-            uni.removeStorageSync('guideCard');
-  
-            // 刷新用户信息
-            await this.getUserInfo();
-            uni.hideLoading();
-            uni.showToast({ title: '升级成功', icon: 'success' });
-          } else {
-            // 兼容request.js在HTTP 200但业务code!=200时直接resolve({code, message})的情况
-            uni.hideLoading();
-            const msg = (res && res.message) ? res.message : '升级失败';
-            uni.showToast({ title: msg, icon: 'none' });
-            if (msg.includes('已绑定其他账号') || msg.includes('请直接使用微信登录')) {
-              setTimeout(() => {
-                uni.navigateTo({ url: '/pages/login/login' });
-              }, 500);
-            }
-            return;
-          }
-        });
+        // 直接跳转到登录页面
+        uni.navigateTo({ url: '/pages/login/login' });
       } catch (e) {
-        console.error('升级失败', e);
-        uni.hideLoading();
-        const msg = e && e.message ? e.message : '升级失败，请稍后重试';
-        uni.showToast({ title: msg, icon: 'none' });
-        // 后端返回“该微信已绑定其他账号，请直接使用微信登录”时，分流到登录页
-        if (msg.includes('已绑定其他账号') || msg.includes('请直接使用微信登录')) {
-          setTimeout(() => {
-            uni.navigateTo({ url: '/pages/login/login' });
-          }, 500);
-        }
+        console.error('操作过程异常:', e);
+        // 即使出错也要跳转到登录页面
+        uni.navigateTo({ url: '/pages/login/login' });
       }
     },
     
@@ -324,13 +271,16 @@ import messageService from '../../common/messageService.js'
   min-height: 100vh;
   
   .user-info {
-    background: #fff;
-    padding: 30rpx 40rpx;
+    background: linear-gradient(135deg, #9333ea, #ec4899);
+    padding: 30rpx 30rpx;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    color: #333;
-    
+    color: #fff;
+    border-radius: 30rpx;
+    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+    margin: 10rpx 20rpx;
+  }  
     .user-info-content {
       display: flex;
       align-items: center;
@@ -338,17 +288,47 @@ import messageService from '../../common/messageService.js'
     }
     
     .member-level-icon {
-      font-size: 40rpx;
+      width: 80rpx;
+      height: 80rpx;
       cursor: pointer;
-      padding: 10rpx;
-      border-radius: 8rpx;
+      padding: 12rpx;
+      border-radius: 50%;
+      background-color: rgba(255, 215, 0, 0.2);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: breathe 2s infinite ease-in-out;
+    }
+    
+    /* 呼吸动画效果 */
+    @keyframes breathe {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4);
+      }
+      70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 20rpx rgba(255, 215, 0, 0);
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+      }
+    }
+    
+    /* 会员等级图标悬停效果 */
+    .member-level-icon:hover {
+      transform: scale(1.1) rotate(360deg);
+      background-color: rgba(255, 215, 0, 0.3);
+      animation: none;
     }
     
     .avatar-container {
-      width: 140rpx;
-      height: 140rpx;
+      width: 190rpx;
+      height: 190rpx;
       border-radius: 50%;
-      background-color: #fff;
+      background-color: #02ff39;
       padding: 4rpx;
       margin-right: 30rpx;
       display: flex;
@@ -356,30 +336,35 @@ import messageService from '../../common/messageService.js'
       justify-content: center;
       overflow: hidden;
       position: relative;
+      box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      border: 4rpx solid #4ade80;
     }
     
-    /* 头像容器样式 - 整合所有设置 */
-    .avatar-container {
-      border-radius: 50%;
-      background-color: #fff;
-      padding: 0; /* 移除内边距 */
-      margin-right: 50rpx; /* 与右侧文字的间隔 */
+    /* 头像内部容器 */
+    .avatar-container > user-avatar {
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
+      background-color: #fff;
+      border-radius: 50%;
       overflow: hidden;
-      position: relative;
-      z-index: 10;
     }
     
-    /* 确保头像组件在容器内正确显示 */
-    .avatar-container > user-avatar {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.9); /* 定位并缩放头像 */
-      z-index: 1;
-      display: block;
+    /* 确保头像图片在组件内正确居中 */
+    .avatar-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    
+    /* 头像容器悬停效果 */
+    .avatar-container:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6rpx 24rpx rgba(0, 0, 0, 0.3);
     }
     
     .user-details {
@@ -387,161 +372,259 @@ import messageService from '../../common/messageService.js'
       flex-direction: column;
       justify-content: center;
       min-height: 140rpx;
+      flex: 1;
       
       .nickname {
         font-size: 36rpx;
         font-weight: 600;
-        color: #333;
+        color: #fff;
         display: flex;
         align-items: center;
+        margin-bottom: 8rpx;
+        transition: all 0.3s ease;
+        
+        /* 昵称悬停效果 */
+        &:hover {
+          transform: scale(1.05);
+          color: #ffd700;
+        }
       }
       
       .phone {
         font-size: 28rpx;
-        color: #666;
+        color: rgba(255, 255, 255, 0.9);
         opacity: 0.9;
+        margin-bottom: 12rpx;
+        transition: all 0.3s ease;
+        
+        /* 手机号悬停效果 */
+        &:hover {
+          transform: scale(1.05);
+          color: #ffd700;
+        }
       }
       
       .remaining-counts {
         display: flex;
         flex-direction: column;
+        
         .count-item {
-          color: #0284c7;
+          color: rgba(255, 255, 255, 0.8);
           display: inline-flex;
           align-items: center;
-        }
-      }
-      
-      .integral {
-        font-size: 28rpx;
-        color: #f97316;
-        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-        padding: 4rpx 16rpx;
-        border-radius: 16rpx;
-        align-self: flex-start;
-        display: inline-flex;
-        align-items: center;
-        box-shadow: 0 2rpx 8rpx rgba(249, 115, 22, 0.1);
-        
-        .label {
-          margin-right: 8rpx;
-          font-weight: 500;
-        }
-        
-        .value {
-          color: #ea580c;
-          font-weight: 600;
+          font-size: 24rpx;
+          margin-bottom: 4rpx;
+          transition: all 0.3s ease;
+          
+          /* 剩余次数悬停效果 */
+          &:hover {
+            transform: scale(1.05);
+            color: #ffd700;
+          }
         }
       }
     }
   }
   
   .function-group {
-    background-color: #fff;
     margin-top: 20rpx;
+    padding: 0 20rpx;
     
     .group-title {
-      padding: 20rpx 30rpx;
+      padding: 0 0 16rpx 0;
       font-size: 28rpx;
-      color: #999;
-      border-bottom: 1rpx solid #eee;
+      color: #666;
+      font-weight: 500;
     }
   }
   
   .square-grid {
     display: flex;
     flex-wrap: wrap;
-    padding: 20rpx 0;
+    padding: 20rpx;
+    gap: 16rpx;
     
     .square-item {
-      width: 25%;
-      padding: 20rpx 0;
+      width: calc(28% - 12rpx);
+      padding: 24rpx 16rpx;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
+      background-color: #f0f0f0;
+      border-radius: 16rpx;
+      transition: all 0.3s ease;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+      min-height: 140rpx;
+      
+      /* 不同功能项的背景色 */
+      &:nth-child(1) {
+        background-color: #dbeafe;
+      }
+      
+      &:nth-child(2) {
+        background-color: #e0e7ff;
+      }
+      
+      &:nth-child(3) {
+        background-color: #d1fae5;
+      }
+      
+      &:nth-child(4) {
+        background-color: #fef3c7;
+      }
+      
+      &:nth-child(5) {
+        background-color: #fce7f3;
+      }
+      
+      &:nth-child(6) {
+        background-color: #dbeafe;
+      }
       
       .square-icon {
-        width: 60rpx;
-        height: 60rpx;
+        width: 80rpx;
+        height: 80rpx;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 10rpx;
+        margin-bottom: 12rpx;
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 50rpx;
+        transition: all 0.3s ease;
+        box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
       }
       
       .square-title {
-        font-size: 28rpx;
-        margin-bottom: 6rpx;
+        font-size: 24rpx;
+        margin-bottom: 8rpx;
         position: relative;
-        
-        &.important::after {
-          content: '';
-          position: absolute;
-          bottom: -4rpx;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 20rpx;
-          height: 4rpx;
-          background-color: #f56c6c;
-          border-radius: 2rpx;
-        }
+        color: #333;
+        font-weight: 500;
+        text-align: center;
       }
       
       .square-desc {
-        font-size: 22rpx;
-        color: #999;
+        font-size: 18rpx;
+        color: #666;
         text-align: center;
+        line-height: 1.3;
+      }
+      
+      /* 悬停效果 */
+      &:hover {
+        transform: scale(1.05) translateY(-2rpx);
+        box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+      }
+      
+      /* 卡片悬停时图标旋转效果 */
+      &:hover .square-icon {
+        transform: scale(1.1) rotate(360deg);
+        box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
+      }
+      
+      /* 图标悬停效果 */
+      .square-icon:hover {
+        transform: scale(1.1) rotate(360deg);
+        box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
       }
     }
   }
   
   .strip-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16rpx;
+    padding: 0;
+    
     .strip-item {
       padding: 24rpx 30rpx;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1rpx solid #eee;
+      border: none;
+      transition: all 0.3s ease;
+      border-radius: 16rpx;
+      margin: 0;
+      background-color: #fff;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+      
+      /* 列表项悬停效果 */
+      &:hover {
+        transform: scale(1.02) translateY(-2rpx);
+        background-color: #f8f9fa;
+        box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+      }
+      
+      /* 卡片悬停时图标旋转效果 */
+      &:hover .strip-icon {
+        transform: scale(1.1) rotate(360deg);
+        background-color: rgba(25, 137, 250, 0.2);
+        box-shadow: 0 4rpx 12rpx rgba(25, 137, 250, 0.3);
+      }
       
       .strip-content {
         display: flex;
         align-items: center;
+        flex: 1;
         
         .strip-icon {
-          width: 50rpx;
-          height: 50rpx;
+          width: 80rpx;
+          height: 80rpx;
           display: flex;
           align-items: center;
           justify-content: center;
           margin-right: 20rpx;
+          transition: all 0.3s ease;
+          background-color: rgba(25, 137, 250, 0.1);
+          border-radius: 50rpx;
+          
+          /* 图标容器悬停效果 */
+          &:hover {
+            transform: scale(1.1) rotate(360deg);
+            background-color: rgba(25, 137, 250, 0.2);
+            box-shadow: 0 4rpx 12rpx rgba(25, 137, 250, 0.3);
+          }
         }
         
         .strip-text {
+          flex: 1;
+          
           .strip-title {
-            font-size: 30rpx;
+            font-size: 28rpx;
             margin-bottom: 4rpx;
             position: relative;
+            transition: all 0.3s ease;
             
-            &.important::after {
-              content: '';
-              position: absolute;
-              bottom: -4rpx;
-              left: 0;
-              width: 20rpx;
-              height: 4rpx;
-              background-color: #f56c6c;
-              border-radius: 2rpx;
+            /* 标题悬停效果 */
+            &:hover {
+              color: #1989fa;
             }
           }
           
           .strip-desc {
             font-size: 22rpx;
             color: #999;
+            transition: all 0.3s ease;
+            
+            /* 描述悬停效果 */
+            &:hover {
+              color: #666;
+            }
           }
+        }
+      }
+      
+      /* 右侧箭头悬停效果 */
+      :deep(.custom-icon) {
+        transition: all 0.3s ease;
+        
+        &:hover {
+          transform: scale(1.2);
+          color: #1989fa;
         }
       }
     }
   }
-}
+
 </style>

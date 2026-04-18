@@ -276,12 +276,46 @@ export default {
     
     // 跳转到编辑账本页面
     navigateToEditLedger(ledger) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后编辑账本',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       uni.navigateTo({
         url: `/pages/ledger/saveLedger?id=${ledger.id}`
       });
     },
     // 新增：跳转到添加成员页面（带上ledgerId）
     navigateToAddMember(ledger) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后分享账本',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       const id = ledger && (ledger.id || ledger.ledgerId);
       if (!id) {
         uni.showToast({ title: '无法识别账本', icon: 'none' });
@@ -293,6 +327,23 @@ export default {
     },
     // 新增：跳转到成员列表（查看分享记录）
     navigateToMemberList() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后查看分享记录',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       uni.navigateTo({
         url: '/pages/member/member'
       });
@@ -300,6 +351,23 @@ export default {
     
     // 处理状态变更
     handleStatusChange(ledger) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后修改账本状态',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       this.currentLedger = ledger;
       this.confirmTitle = ledger.status === 0 ? '停用账本' : '启用账本';
       this.confirmContent = ledger.status === 0 ? '确定要停用该账本吗？停用后账本将不可用。' : '确定要启用该账本吗？';
@@ -414,6 +482,18 @@ export default {
 
 .ledger-list {
   padding: 20rpx;
+}
+
+.form-title {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  padding: 24rpx 30rpx;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  text-align: center;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.3);
 }
 
 .ledger-item {

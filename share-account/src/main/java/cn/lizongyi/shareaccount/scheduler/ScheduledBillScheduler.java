@@ -4,6 +4,7 @@ import cn.lizongyi.shareaccount.entity.ScheduledBill;
 import cn.lizongyi.shareaccount.services.ScheduledBillService;
 import cn.lizongyi.shareaccount.response.ScheduledBillLogResponse;
 import cn.lizongyi.shareaccount.entity.ScheduledBillLog;
+import cn.lizongyi.shareaccount.services.BaseHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,6 +31,9 @@ public class ScheduledBillScheduler {
     @Qualifier("scheduledBillThreadPool")
     private Executor executor;
 
+    @Autowired
+    private BaseHandler baseHandler;
+
     /**
      * 每5分钟执行一次，扫描并执行定时记账配置
      */
@@ -50,6 +54,7 @@ public class ScheduledBillScheduler {
 
             // 遍历检查每个配置是否需要执行
             for (ScheduledBill bill : scheduledBills) {
+
                 // 检查开始日期和结束日期
                 if (!checkDateRange(bill, today)) {
                     continue;
@@ -210,7 +215,7 @@ public class ScheduledBillScheduler {
      * 检查定时记账配置是否在当前周期内已经执行过
      * @param scheduledBill 定时记账配置
      * @param now 当前时间
-     * @return 是否已执行过
+     * @return 是否已执行过（只考虑成功的执行记录）
      */
     private boolean hasExecutedRecently(ScheduledBill scheduledBill, LocalDateTime now) {
         try {
@@ -222,9 +227,10 @@ public class ScheduledBillScheduler {
                 Integer cycleValue = scheduledBill.getCycleValue();
                 LocalDateTime firstExecuteTime = scheduledBill.getExecuteTime();
                 
-                // 检查是否有记录在当前周期内已经执行过
+                // 检查是否有成功的记录在当前周期内已经执行过
                 for (ScheduledBillLog logItem : logItems) {
-                    if (logItem.getExecuteTime() != null) {
+                    // 只考虑状态为成功的执行记录
+                    if (logItem.getStatus() == 1 && logItem.getExecuteTime() != null) {
                         LocalDateTime executeTime = logItem.getExecuteTime();
                         
                         // 检查执行时间是否在当前周期内

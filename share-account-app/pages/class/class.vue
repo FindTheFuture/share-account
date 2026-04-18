@@ -233,7 +233,8 @@ export default {
       collapseKey: 0,
       categoryModal: null,
       actionModal: null,
-      saveLoading: false // 保存按钮loading状态
+      saveLoading: false, // 保存按钮loading状态
+      isGuest: false // 游客模式标记
     }
   },
   computed: {
@@ -424,6 +425,24 @@ export default {
     
     // 显示添加分类弹窗
     showAddCategoryModal(parentIdStr) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后添加分类',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
+      
       if (!this.categoryModal) {
         this.categoryModal = this.$refs.categoryModal;
         if (!this.categoryModal) {
@@ -440,6 +459,25 @@ export default {
     
     // 显示编辑分类弹窗
     showEditCategoryModal() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后修改分类',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        this.closeActionModal();
+        return;
+      }
+      
       if (!this.currentCategory) return;
       
       if (!this.categoryModal) {
@@ -473,6 +511,25 @@ export default {
     
     // 保存分类
     async saveCategory() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后保存分类',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        this.closeCategoryModal();
+        return;
+      }
+      
       if (!this.newCategoryName.trim()) {
         uni.showToast({ title: '请输入分类名称', icon: 'none' });
         return;
@@ -567,6 +624,25 @@ export default {
     
     // 更新分类状态
     async updateCategoryStatus() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后修改分类状态',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        this.closeActionModal();
+        return;
+      }
+      
       if (!this.currentCategory) return;
       
       try {
@@ -613,6 +689,10 @@ export default {
   },
   onLoad() {
     this.initPage();
+  },
+  onShow() {
+    // 检查游客模式状态
+    this.isGuest = !!uni.getStorageSync('isGuest');
   },
   onReady() {
     this.$nextTick(() => {

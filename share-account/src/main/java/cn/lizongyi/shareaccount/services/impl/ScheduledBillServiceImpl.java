@@ -276,6 +276,7 @@ public class ScheduledBillServiceImpl implements ScheduledBillService {
     private Long generateBill(ScheduledBill scheduledBill, LocalDateTime executeTime) {
 
         CreateBillRequest request = new CreateBillRequest();
+        request.setUserId(scheduledBill.getUserId());
         request.setLedgerId(scheduledBill.getLedgerId());
         request.setAccountId(scheduledBill.getAccountId());
         request.setClassId(scheduledBill.getClassId());
@@ -330,10 +331,10 @@ public class ScheduledBillServiceImpl implements ScheduledBillService {
      */
     private String buildMessageContent(ScheduledBill scheduledBill, ScheduledBillLog billLog, String status) {
         StringBuilder content = new StringBuilder();
-        content.append(scheduledBill.getName() + " # 定时记账执行通知\n\n");
-        content.append("## 执行结果：").append(status).append("\n");
-        content.append("- 执行时间：").append(billLog.getExecuteTime()).append("\n");
-        content.append("- 金额：").append(PriceFormatUtil.formatPriceLong(scheduledBill.getPrice())).append("元\n");
+        content.append(scheduledBill.getName() + " - 定时记账执行通知\n\n");
+        content.append("执行结果：").append(status).append("\n");
+        content.append("执行时间：").append(billLog.getExecuteTime()).append("\n");
+        content.append("金额：").append(PriceFormatUtil.formatPriceLong(scheduledBill.getPrice())).append("元\n");
         content.append(billLog.getErrorMsg()).append("\n");
         return content.toString();
     }

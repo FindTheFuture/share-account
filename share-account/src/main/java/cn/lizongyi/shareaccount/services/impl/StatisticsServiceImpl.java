@@ -2,10 +2,12 @@ package cn.lizongyi.shareaccount.services.impl;
 
 import cn.lizongyi.shareaccount.dao.BillMapper;
 import cn.lizongyi.shareaccount.entity.Bill;
+import cn.lizongyi.shareaccount.entity.Budget;
 import cn.lizongyi.shareaccount.response.ClassResponse;
 import cn.lizongyi.shareaccount.response.StatisticsResponse;
 import cn.lizongyi.shareaccount.services.ClassEntityService;
 import cn.lizongyi.shareaccount.services.BaseHandler;
+import cn.lizongyi.shareaccount.services.BudgetService;
 import cn.lizongyi.shareaccount.services.StatisticsService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -29,6 +31,9 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Autowired
     private BaseHandler baseHandler;
+
+    @Autowired
+    private BudgetService budgetService;
 
     @Override
     public StatisticsResponse getStatistics(Long userId,
@@ -105,7 +110,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             result.setBalance(totalIncome - totalExpense);
 
             // 时间线聚合
-            List<StatisticsResponse.TimelinePoint> timeline = buildTimeline(dimension, bills, startTime, endTime, year, month);
+            List<StatisticsResponse.TimelinePoint> timeline = buildTimeline(dimension, bills, startTime, endTime, year, month, ledgerId);
             result.setTimeline(timeline);
 
             // 分类统计聚合
@@ -131,7 +136,8 @@ public class StatisticsServiceImpl implements StatisticsService {
                                                                  LocalDateTime startTime,
                                                                  LocalDateTime endTime,
                                                                  Integer year,
-                                                                 Integer month) {
+                                                                 Integer month,
+                                                                 Long ledgerId) {
         Map<String, StatisticsResponse.TimelinePoint> map = new LinkedHashMap<>();
         DateTimeFormatter yFmt = DateTimeFormatter.ofPattern("yyyy");
         DateTimeFormatter ymFmt = DateTimeFormatter.ofPattern("yyyy-MM");
@@ -152,7 +158,11 @@ public class StatisticsServiceImpl implements StatisticsService {
         } else if ("day".equalsIgnoreCase(dimension)) {
             // 当天按小时段（简化为按当日单点）
             String label = startTime.toLocalDate().format(ymdFmt);
-            StatisticsResponse.TimelinePoint tp = map.computeIfAbsent(label, k -> new StatisticsResponse.TimelinePoint(k, 0L, 0L, 0L));
+            StatisticsResponse.TimelinePoint tp = map.computeIfAbsent(label, k -> {
+                StatisticsResponse.TimelinePoint point = new StatisticsResponse.TimelinePoint();
+                point.setLabel(k);
+                return point;
+            });
             for (Bill bill : bills) {
                 accumulateTimeline(map, label, bill);
             }
@@ -170,15 +180,63 @@ public class StatisticsServiceImpl implements StatisticsService {
             }
         }
 
-        // 计算 balance
+        // 计算 balance 和预算数据
         for (StatisticsResponse.TimelinePoint tp : map.values()) {
             tp.setBalance(tp.getIncome() - tp.getExpense());
+            
+            // 计算预算数据（仅当选择了账本时）
+            if (ledgerId != null && ledgerId > 0) {
+                try {
+                    // 解析标签获取年月
+                    String label = tp.getLabel();
+                    Integer budgetYear = null;
+                    Integer budgetMonth = null;
+                    
+                    if (label.length() == 7 && label.contains("-")) {
+                        // 格式：yyyy-MM（年维度下的月份）
+                        String[] parts = label.split("-");
+                        budgetYear = Integer.parseInt(parts[0]);
+                        budgetMonth = Integer.parseInt(parts[1]);
+                    } else if (label.length() == 10 && label.contains("-")) {
+                        // 格式：yyyy-MM-dd（月/日维度下的日期）
+                        String[] parts = label.split("-");
+                        budgetYear = Integer.parseInt(parts[0]);
+                        budgetMonth = Integer.parseInt(parts[1]);
+                    } else if (label.length() == 4) {
+                        // 格式：yyyy（总览维度下的年份）- 不计算预算
+                        continue;
+                    }
+                    
+                    if (budgetYear != null && budgetMonth != null) {
+                        Budget budget = budgetService.findByYearMonthAndLedger(budgetYear, budgetMonth, ledgerId);
+                        if (budget != null && budget.getTotalBalance() != null && budget.getTotalBalance() > 0) {
+                            Long budgetTotal = budget.getTotalBalance();
+                            tp.setBudgetTotal(budgetTotal);
+                            
+                            // 计算预算使用率
+                            Long expense = tp.getExpense();
+                            if (expense != null && expense > 0) {
+                                double usageRate = (double) expense / (double) budgetTotal;
+                                tp.setBudgetUsageRate(usageRate);
+                            } else {
+                                tp.setBudgetUsageRate(0.0);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("查询预算信息失败: label={}, ledgerId={}", tp.getLabel(), ledgerId, e);
+                }
+            }
         }
         return new ArrayList<>(map.values());
     }
 
     private void accumulateTimeline(Map<String, StatisticsResponse.TimelinePoint> map, String label, Bill bill) {
-        StatisticsResponse.TimelinePoint tp = map.computeIfAbsent(label, k -> new StatisticsResponse.TimelinePoint(k, 0L, 0L, 0L));
+        StatisticsResponse.TimelinePoint tp = map.computeIfAbsent(label, k -> {
+            StatisticsResponse.TimelinePoint point = new StatisticsResponse.TimelinePoint();
+            point.setLabel(k);
+            return point;
+        });
         Long price = bill.getPrice();
         if (price == null) return;
         if (price > 0) {

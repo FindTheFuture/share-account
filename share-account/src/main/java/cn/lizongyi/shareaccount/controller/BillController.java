@@ -172,19 +172,31 @@ public class BillController {
     }
     
     /**
-     * 获取账本本月收支统计
+     * 获取账本指定年月收支统计
      * @param ledgerId 账本 ID
+     * @param year 年份（可选，默认当前年份）
+     * @param month 月份（可选，默认当前月份）
      * @return 包含收支统计信息的响应实体
      */
     @GetMapping("/getMonthlyStatisticsByLedgerId/{ledgerId}")
-    public ResponseEntity<ApiResponse<MonthlyStatisticsResponse>> getMonthlyStatisticsByLedgerId(@PathVariable Long ledgerId) {
+    public ResponseEntity<ApiResponse<MonthlyStatisticsResponse>> getMonthlyStatisticsByLedgerId(
+            @PathVariable Long ledgerId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
         if (ledgerId == null || ledgerId <= 0) {
             return ResponseEntity.ok(ApiResponse.error("参数不正确"));
         }
-        
-        log.info("获取账本 id:{} 的本月收支统计", ledgerId);
-        
-        MonthlyStatisticsResponse statistics = billService.getMonthlyStatisticsByLedgerId(ledgerId);
+
+        // 如果未提供年月，使用当前年月
+        if (year == null || month == null) {
+            LocalDate now = LocalDate.now();
+            year = year != null ? year : now.getYear();
+            month = month != null ? month : now.getMonthValue();
+        }
+
+        log.info("获取账本 id:{} 的 {}年{}月 收支统计", ledgerId, year, month);
+
+        MonthlyStatisticsResponse statistics = billService.getMonthlyStatisticsByLedgerId(ledgerId, year, month);
         if (statistics == null) {
             return ResponseEntity.ok(ApiResponse.error("无权限或未找到统计信息"));
         }

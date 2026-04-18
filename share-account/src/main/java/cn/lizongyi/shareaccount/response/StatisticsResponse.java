@@ -30,8 +30,9 @@ public class StatisticsResponse implements Serializable {
     /** 分类统计 */
     private List<CategoryStat> categories = new ArrayList<>();
 
-    /** 年份列表（用于“总览”维度下的年度选择） */
+    /** 年份列表（用于"总览"维度下的年度选择） */
     private List<Integer> years = new ArrayList<>();
+
 
     @Data
     @NoArgsConstructor
@@ -43,6 +44,10 @@ public class StatisticsResponse implements Serializable {
         private Long income = 0L;
         private Long expense = 0L;
         private Long balance = 0L;
+        /** 该月/日预算总金额（分） */
+        private Long budgetTotal = 0L;
+        /** 该月/日预算使用率（总支出/预算总金额，范围0-1） */
+        private Double budgetUsageRate = 0.0;
     }
 
     @Data

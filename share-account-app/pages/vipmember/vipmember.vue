@@ -258,12 +258,15 @@
         loading: false,
         showAllMembers: false, // 是否显示所有会员状态
         showMembersPopup: false, // 控制弹窗显示
+        isGuest: false, // 游客模式标记
       }
     },
     onLoad() {
         
     },
     onShow() {
+      // 检查游客模式状态
+      this.isGuest = !!uni.getStorageSync('isGuest');
       this.loadData()
     },
     methods: {
@@ -461,6 +464,24 @@
       
       // 处理订阅点击
       async handleSubscribe(pkg) {
+        // 检查是否为游客模式
+        if (this.isGuest) {
+          uni.showModal({
+            title: '提示',
+            content: '请登录后订阅会员',
+            showCancel: false,
+            success: (res) => {
+              if (res.confirm) {
+                // 跳转到登录页面
+                uni.navigateTo({
+                  url: '/pages/login/login'
+                })
+              }
+            }
+          })
+          return
+        }
+        
         if (!pkg || !pkg.id) {
           uni.showToast({
             title: '套餐信息有误',
@@ -898,8 +919,8 @@
     }
     
     .avatar-container {
-      width: 140rpx;
-      height: 140rpx;
+      width: 190rpx;
+      height: 190rpx;
       border-radius: 50%;
       background-color: #fff;
       padding: 4rpx;

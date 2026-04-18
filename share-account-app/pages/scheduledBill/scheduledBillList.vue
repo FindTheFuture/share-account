@@ -116,7 +116,8 @@ export default {
       confirmContent: '',
       confirmButtonText: '',
       currentScheduledBill: null,
-      confirmActionType: '' // 'delete' 或 'status'
+      confirmActionType: '', // 'delete' 或 'status'
+      isGuest: false // 游客模式标记
     }
   },
   onLoad() {
@@ -127,6 +128,8 @@ export default {
     this.loadScheduledBillList();
   },
   onShow() {
+    // 检查游客模式状态
+    this.isGuest = !!uni.getStorageSync('isGuest');
     // 从添加/编辑页面返回时刷新列表
     if (!this.loading) {
       this.loadScheduledBillList();
@@ -189,6 +192,23 @@ export default {
      * 跳转到添加定时记账配置页面
      */
     navigateToAddScheduledBill() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后添加定时记账配置',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       uni.navigateTo({
         url: '/pages/scheduledBill/scheduledBillEdit'
       });
@@ -198,6 +218,23 @@ export default {
      * 跳转到编辑定时记账配置页面
      */
     navigateToEditScheduledBill(item) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后编辑定时记账配置',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       uni.navigateTo({
         url: `/pages/scheduledBill/scheduledBillEdit?id=${item.id}`
       });
@@ -207,6 +244,23 @@ export default {
      * 查看定时记账配置详情
      */
     showScheduledBillDetail(item) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后查看定时记账配置详情',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       uni.navigateTo({
         url: `/pages/scheduledBill/scheduledBillDetail?id=${item.id}`
       });
@@ -216,6 +270,23 @@ export default {
      * 跳转到日志列表页面
      */
     navigateToLogList(scheduledBillId) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后查看定时记账日志',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       uni.navigateTo({
         url: `/pages/scheduledBill/scheduledBillLogList?scheduledBillId=${scheduledBillId}`
       });
@@ -286,6 +357,23 @@ export default {
      * 处理定时记账配置状态变更
      */
     handleStatusChange(item) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后修改定时记账配置状态',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       this.currentScheduledBill = item;
       this.confirmActionType = 'status';
       this.confirmTitle = item.status === 1 ? '确认暂停配置' : '确认启用配置';
@@ -301,6 +389,23 @@ export default {
      * 处理定时记账配置删除
      */
     handleDelete(item) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后删除定时记账配置',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       this.currentScheduledBill = item;
       this.confirmActionType = 'delete';
       this.confirmTitle = '确认删除配置';

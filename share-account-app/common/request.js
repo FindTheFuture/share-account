@@ -89,7 +89,7 @@ function _request(options, customOptions = {}) {
         
         // 跳转到登录页面，延迟执行以便提示能显示
         setTimeout(() => {
-            uni.navigateTo({ url: '/pages/login/login' });
+            //uni.navigateTo({ url: '/pages/login/login' });
         }, 1000); // 增加延迟时间，确保提示完全显示
         return Promise.reject(notLoggedInError);
     }
@@ -171,7 +171,7 @@ function _request(options, customOptions = {}) {
                         }
                         
                         // 跳转到登录页面
-                        uni.navigateTo({ url: '/pages/login/login' });
+                        //uni.navigateTo({ url: '/pages/login/login' });
                     }
                     
                     // 抛出未授权错误

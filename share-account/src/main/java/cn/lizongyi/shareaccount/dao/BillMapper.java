@@ -35,6 +35,17 @@ public interface BillMapper {
     @Select("SELECT * FROM `bill` WHERE user_id = #{userId}")
     List<Bill> findByUserId(Long userId);
 
+
+
+    /**
+     * 根据用户 ID 统计账单数量
+     * @param userId 用户 ID
+     * @return 账单数量
+     */
+    @Select("SELECT COUNT(*) FROM `bill` WHERE user_id = #{userId} AND status = 0")
+    int countByUserId(Long userId);
+
+
     /**
      * 根据账本 ID 查询账单信息列表
      * @param ledgerId 账本 ID

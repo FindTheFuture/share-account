@@ -41,8 +41,13 @@ export default {
         alignItems: 'center',
         justifyContent: 'center'
       };
-      // 使用themeIconColor方法处理颜色，确保返回有效的颜色值
-      style.color = themeIconColor(this.color);
+      // 如果传入了颜色，直接使用该颜色；否则使用默认颜色
+      if (this.color) {
+        style.color = this.color;
+      } else {
+        // 未设置颜色时使用默认处理
+        style.color = themeIconColor(this.color);
+      }
       return style;
     }
   },

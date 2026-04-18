@@ -15,7 +15,8 @@
             :user-id="haoe"
             :uploadable="false"
             :show-edit-mask="false"
-            :clickable="false"
+            :clickable="true"
+            @click="previewAvatar"
           ></user-avatar>
           <view class="avatar-badge" v-if="userInfo.roleName">
             {{ userInfo.roleName }}
@@ -77,7 +78,7 @@
       <!-- 底部编辑按钮 -->
       <view class="edit-btn-container">
         <button :disabled="userInfo.isGuest" @click="onEditClick">{{ userInfo.isGuest ? '游客模式不允许编辑' : '编辑' }}</button>
-        <button class="logout-btn" @click="onLogoutClick">退出登录</button>
+        <button v-if="!userInfo.isGuest" class="logout-btn" @click="onLogoutClick">退出登录</button>
       </view>
     </view>
   </view>
@@ -212,6 +213,17 @@ export default {
         uni.showToast({ title: '操作失败', icon: 'none' });
       }
     },
+    
+    // 预览头像
+    previewAvatar() {
+      if (this.userInfo && this.userInfo.pictureAddress) {
+        uni.previewImage({
+          urls: [this.userInfo.pictureAddress],
+          current: this.userInfo.pictureAddress,
+          showmenu: true
+        });
+      }
+    },
   }
 }
 </script>
@@ -254,7 +266,7 @@ export default {
 .avatar-badge {
   position: absolute;
   bottom: -10rpx;
-  right: 20rpx;
+  right: 37rpx;
   background-color: #e6f7ff;
   color: #1989fa;
   font-size: 22rpx;

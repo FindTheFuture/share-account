@@ -35,39 +35,39 @@
         <view class="section-title">账单信息</view>
         <view class="bill-detail-info">
           <view class="detail-row" v-if="logDetail.bill.createUserName || logDetail.bill.userName">
-            <text class="detail-label">创建人</text>
+            <text class="detail-label">创建人：</text>
             <text class="detail-value">{{ logDetail.bill.createUserName || logDetail.bill.userName || '-' }}</text>
           </view>
           <view class="detail-row">
-            <text class="detail-label">分类</text>
+            <text class="detail-label">分类：</text>
             <view class="detail-value">
               <text>{{ logDetail.bill.className }}</text>
             </view>
           </view>
           <view class="detail-row">
-            <text class="detail-label">金额</text>
+            <text class="detail-label">金额：</text>
             <text :class="['detail-value', Number(logDetail.bill.price) > 0 ? 'income' : 'expense']">
               {{ formatAmount(logDetail.bill.price) }}
             </text>
           </view>
           <view class="detail-row" v-if="logDetail.bill.ledgerName">
-            <text class="detail-label">账本名称</text>
+            <text class="detail-label">账本名称：</text>
             <text class="detail-value">{{ logDetail.bill.ledgerName }}</text>
           </view>
           <view class="detail-row">
-            <text class="detail-label">账户名称</text>
+            <text class="detail-label">账户名称：</text>
             <text class="detail-value">{{ logDetail.bill.accountName }}</text>
           </view>
           <view class="detail-row" v-if="logDetail.bill.isBudgetName">
-            <text class="detail-label">预算状态</text>
+            <text class="detail-label">预算状态：</text>
             <text class="detail-value">{{ logDetail.bill.isBudgetName }}</text>
           </view>
           <view class="detail-row">
-            <text class="detail-label">时间</text>
+            <text class="detail-label">时间：</text>
             <text class="detail-value">{{ logDetail.bill.billTime }}</text>
           </view>
           <view class="detail-row" v-if="logDetail.bill.memo">
-            <text class="detail-label">备注</text>
+            <text class="detail-label">备注：</text>
             <text class="detail-value">{{ logDetail.bill.memo }}</text>
           </view>
         </view>
@@ -139,8 +139,8 @@ export default {
      */
     formatAmount(amount) {
       const n = Number(amount) || 0;
-      // 后端返回的金额已经是元为单位，直接保留两位小数
-      return n.toFixed(2);
+      // 后端返回的金额是分为单位，需要转换为元
+      return (n / 100).toFixed(2);
     },
     
     /**

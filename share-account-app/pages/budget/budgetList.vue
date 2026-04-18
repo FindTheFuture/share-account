@@ -203,7 +203,8 @@ export default {
       confirmContent: '',
       confirmButtonText: '',
       currentItem: null,
-      confirmActionType: '' // 'status' 或 'delete'
+      confirmActionType: '', // 'status' 或 'delete'
+      isGuest: false // 游客模式标记
     };
   },
   onLoad() {
@@ -216,6 +217,8 @@ export default {
   },
   
   onShow() {
+    // 检查游客模式状态
+    this.isGuest = !!uni.getStorageSync('isGuest');
     // 当页面显示时（包括从其他页面返回时）刷新预算列表
     this.loadBudgetList();
   },
@@ -337,6 +340,23 @@ export default {
     
     // 打开同步预算的年月选择器弹窗
     openSyncMonthPicker() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后同步预算',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       this.syncMonthPickerPopup = this.$refs.syncMonthPickerPopup;
       this.syncMonthPickerPopup.open();
     },
@@ -410,6 +430,23 @@ export default {
 
     // 导航到添加明细页面
     navigateToAddItem() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后添加预算',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       // 从selectedMonth中提取年份和月份
       const [year, month] = this.selectedMonth.split('-');
       let budgetId = null;
@@ -426,6 +463,23 @@ export default {
 
     // 导航到编辑明细页面
     navigateToEditItem(item) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后编辑预算',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       uni.navigateTo({
         url: `/pages/budget/addBudgetItem?id=${item.id}&budgetId=${item.budgetId}`
       });
@@ -433,6 +487,23 @@ export default {
 
     // 处理明细状态变更
     handleStatusChange(item) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后修改预算状态',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       this.currentItem = item;
       this.confirmTitle = item.status === 0 ? '停用预算明细' : '启用预算明细';
       this.confirmContent = item.status === 0

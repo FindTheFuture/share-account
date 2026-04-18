@@ -113,7 +113,7 @@ export default {
     },
     // 处理点击事件
     handleClick() {
-      if (this.clickable && this.uploadable) {
+      if (this.clickable) {
         this.$emit('click');
       }
     },

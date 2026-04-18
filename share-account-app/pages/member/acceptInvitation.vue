@@ -268,6 +268,9 @@ export default {
     margin-bottom: 20rpx;
     box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.15);
     background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .avatar {

@@ -95,10 +95,16 @@ public class WeChatPayServiceImplV3 implements WeChatPayServiceV3 {
             return null;
         }
 
+        boolean isGuest = baseHandler.isGuestUser(paymentRecord.getUserId());
+        if (isGuest) {
+            log.info("游客模式不允许创建预支付订单");
+            return null;
+        }
+
         // 获取会员套餐信息
         MemberPackageResponse memberPackage = memberPackageService.findById(paymentRecord.getMemberPackageId());
         if (memberPackage == null) {
-            log.info("找不到对应的会员套餐，memberPackageId={}", paymentRecord.getMemberPackageId());
+            log.info("找不到对应的会员套餐，me                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       mberPackageId={}", paymentRecord.getMemberPackageId());
             return null;
         }
 

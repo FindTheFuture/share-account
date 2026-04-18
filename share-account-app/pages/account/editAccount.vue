@@ -2,7 +2,6 @@
   <view class="account-edit-page">
     <!-- 表单内容 -->
     <view class="form-container">
-      <view class="form-title">钱从哪个账户进出？例如各种银行卡、支付宝、微信、花呗、信用卡等账户</view>
       <!-- 账户名称 -->
       <view class="form-item">
         <text class="form-label">账户名称 <text class="required">*</text></text>

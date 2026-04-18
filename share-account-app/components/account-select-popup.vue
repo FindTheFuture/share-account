@@ -4,20 +4,21 @@
       <view class="popup-header">
         <view class="title-with-icon">
           <text class="popup-title">选择账户</text>
-          <uni-icons type="info" size="18" color="#999" class="notify-tip-icon" @click.stop="onAccountTipClick" />
+          <uni-icons type="info" size="18" color="#999" class="notify-tip-icon icon-hover" @click.stop="onAccountTipClick" />
         </view>
         <view class="popup-actions">
-          <custom-icon type="bianji" :size="20" color="#007AFF" @tap="navigateToAccountList" style="margin-right: 20rpx;"></custom-icon>
-          <custom-icon type="guanbi" :size="20" color="#999" @tap="close"></custom-icon>
+          <custom-icon type="bianji" :size="20" color="#007AFF" @tap="navigateToAccountList" class="icon-hover"></custom-icon>
+          <custom-icon type="guanbi" :size="20" color="#999" @tap="close" class="icon-hover"></custom-icon>
         </view>
       </view>
       <view class="popup-content">
         <div v-if="accountList.length > 0">
           <view class="account-list">
             <view
-              v-for="account in accountList"
+              v-for="(account, index) in accountList"
               :key="account.id"
-              :class="['account-item', { 'selected': selectedAccount && selectedAccount.id === account.id }]"
+              :class="['account-item', 'account-card', { 'selected': selectedAccount && selectedAccount.id === account.id }]"
+              :style="{ animationDelay: (index * 0.1) + 's' }"
               @tap="handleSelect(account)"
             >
               <view class="account-info">
@@ -32,7 +33,7 @@
               </view>
             </view>
             <!-- 不选账户选项 -->
-            <view class="no-select-account" @tap="clearSelection">
+            <view class="no-select-account btn-hover" @tap="clearSelection">
               <text class="no-select-account-text">不选账户</text>
             </view>
           </view>
@@ -209,118 +210,217 @@ export default {
 </script>
 
 <style scoped>
-/* 直接转移自 pages/bill/addBill.vue 的账户弹窗相关样式 */
+/* 弹窗整体样式 */
 .popup-container {
-  width: 680rpx;
+  width: 720rpx;
   background-color: #fff;
   border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 10rpx 40rpx rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.15);
 }
+
+/* 从左侧滑入动画 */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 账户卡片动画类 */
+.account-card {
+  animation: slideInLeft 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+/* 动态动画延迟通过模板计算设置 */
+
+/* 弹窗头部样式 */
 .popup-header {
-  padding: 30rpx 40rpx;
+  padding: 24rpx 32rpx;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #FAFAFA;
+  background-color: #ffffff;
+  border-bottom: 1rpx solid #f0f0f0;
 }
+
 .popup-title {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #333333;
 }
+
 .title-with-icon {
   display: flex;
   align-items: center;
-  gap: 8rpx;
+  gap: 12rpx;
 }
+
 .notify-tip-icon {
-  margin-left: 8rpx;
+  margin-left: 0;
 }
+
+/* 图标悬浮动画效果 */
+.icon-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  padding: 12rpx;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-hover:hover {
+  transform: scale(1.2);
+  background-color: #f5f5f5;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 弹窗内容样式 */
 .popup-content {
-  max-height: 640rpx;
+  max-height: 680rpx;
   overflow-y: auto;
-  padding: 30rpx 40rpx;
+  padding: 24rpx 32rpx;
 }
+
+/* 账户列表样式 */
 .account-list {
-  padding: 20rpx;
+  padding: 0;
 }
-.account-item {
-  padding: 25rpx;
-  border-bottom: 1px solid #f0f0f0;
+
+/* 账户卡片样式 */
+.account-card {
+  background-color: #f8f0f8;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
 }
-.account-item:active {
-  background-color: #e0e0e0;
+
+/* 账户卡片悬浮动画效果 */
+.account-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.1);
+  border-color: #007AFF;
 }
-.account-item.selected {
-  background-color: #e8fde8;
+
+.account-card:active {
+  background-color: #f0e6f0;
 }
+
+.account-card.selected {
+  background-color: #e8f4fd;
+  border: 2rpx solid #007AFF;
+  box-shadow: 0 4rpx 16rpx rgba(0, 122, 255, 0.2);
+}
+
+/* 账户信息样式 */
 .account-info {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 15rpx;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
 }
+
 .account-name-title {
-  font-size: 32rpx;
-  color: #1f2937; /* 深色标题 */
-  font-weight: 600;
-  max-width: 420rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333333;
+  flex: 1;
+  margin-right: 16rpx;
 }
+
+.default-badge {
+  font-size: 24rpx;
+  color: #ffffff;
+  background-color: #007AFF;
+  padding: 4rpx 16rpx;
+  border-radius: 16rpx;
+  margin-right: 16rpx;
+}
+
+.account-balance {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333333;
+  flex-shrink: 0;
+}
+
+/* 账户信息第二行样式 */
 .account-info-second-line {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 15rpx;
-  margin-top: 10rpx;
-  padding-left: 0;
+  gap: 16rpx;
+  flex-wrap: wrap;
 }
+
+.account-type-tag {
+  font-size: 24rpx;
+  color: #007AFF;
+  padding: 0;
+}
+
+.account-budget-tag {
+  font-size: 24rpx;
+  color: #FF9500;
+  padding: 0;
+}
+
+.account-total-tag {
+  font-size: 24rpx;
+  color: #34C759;
+  padding: 0;
+}
+
+/* 弹窗操作按钮样式 */
+.popup-actions {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+/* 不选账户按钮样式 */
 .no-select-account {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20rpx 0;
-  margin-top: 10rpx;
+  padding: 24rpx;
+  margin-top: 20rpx;
+  border: 1rpx dashed #e0e0e0;
+  border-radius: 24rpx;
+  background-color: #fafafa;
 }
+
 .no-select-account-text {
   color: #007AFF;
-  text-decoration: underline;
   font-size: 28rpx;
 }
-.account-balance {
-  font-size: 24rpx;
-  color: #666;
-  margin-left: auto;
+
+/* 按钮悬浮动画效果 */
+.btn-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
 }
-.account-type-tag {
-  font-size: 24rpx;
-  color: #007AFF;
-  padding: 5rpx 15rpx;
-  border-radius: 15rpx;
+
+.btn-hover:hover {
+  transform: scale(1.02);
+  background-color: #f0f0f0;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 }
-.account-budget-tag {
+
+/* 无数据提示样式 */
+.no-data-tip {
+  padding: 48rpx 20rpx;
+  text-align: center;
   font-size: 24rpx;
-  color: #FF9500;
-  padding: 0 15rpx;
-}
-.account-total-tag {
-  font-size: 24rpx;
-  color: #34C759;
-  padding: 0 15rpx;
-}
-.popup-actions {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-.default-badge {
-  font-size: 24rpx;
-  color: #007AFF;
-  background: none;
-  padding: 0;
+  color: #999999;
 }
 </style>

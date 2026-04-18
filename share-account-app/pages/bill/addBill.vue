@@ -22,7 +22,7 @@
           class="memo-input" 
           type="text" 
           v-model="billMemo" 
-          placeholder="描述下账单"
+          placeholder="描述下账单，可填"
           maxlength="100"
         />
         <text class="memo-input-count">{{ billMemo.length }}/100</text>
@@ -30,35 +30,41 @@
 
       <!-- 可拖动标签区域 -->
       <view class="tags-container">
-        <scroll-view scroll-x="true" class="tags-scroll-view" show-scrollbar="false">
-          <view class="tags-wrapper">
-            <!-- AI记账标签 -->
-            <view class="tag-item ai-tag" @click="showAIChatPopup">
-              <text class="tag-text">AI记账</text>
-            </view>
-            
-            <!-- AI记账标签 -->
-            <view class="tag-item ai-tag" @click="chooseImage">
-              <text class="tag-text">AI识图</text>
-            </view>
-            
-            <!-- 账本标签 -->
-            <view class="tag-item ledger-tag" @click="showLedgerPopup">
-              <text class="tag-text">{{ selectedLedger ? selectedLedger.name : '选择账本' }}</text>
-            </view>
-            
-            <!-- 账户标签 -->
-            <view class="tag-item account-tag" @click="showAccountPopup">
-              <text class="tag-text">{{ selectedAccount ? selectedAccount.name : '可选账户' }}</text>
-            </view>
-            
-            <!-- 计入预算标签 -->
-            <view class="tag-item budget-tag" :class="{'budget-disabled': !isBudget}" @click="toggleBudget">
-              <text class="tag-text">{{ isBudget ? '计入预算' : '不计入预算' }}</text>
-            </view>
-            
+        <!-- 第二行：AI记账和AI识图 -->
+        <view class="tags-row">
+          <!-- AI记账标签 -->
+          <view class="tag-item ai-tag" @click="showAIChatPopup">
+            <custom-icon type="bianji" :size="20" color="#fff" class="tag-icon"></custom-icon>
+            <text class="tag-text">AI记账</text>
           </view>
-        </scroll-view>
+          
+          <!-- AI识图标签 -->
+          <view class="tag-item ai-tag" @click="chooseImage">
+            <custom-icon type="paizhao" :size="20" color="#fff" class="tag-icon" style="font-weight: bold;"></custom-icon>
+            <text class="tag-text">AI识别</text>
+          </view>
+        </view>
+        
+        <!-- 第三行：账本、账户、计入预算 -->
+        <view class="tags-row">
+          <!-- 账本标签 -->
+          <view class="tag-item ledger-tag" @click="showLedgerPopup">
+            <custom-icon type="wodezhangben" :size="18" color="#5856D6" class="tag-icon"></custom-icon>
+            <text class="tag-text">{{ selectedLedger ? selectedLedger.name : '选择账本' }}</text>
+          </view>
+          
+          <!-- 账户标签 -->
+          <view class="tag-item account-tag" @click="showAccountPopup">
+            <custom-icon type="zhanghu" :size="18" color="#34C759" class="tag-icon"></custom-icon>
+            <text class="tag-text">{{ selectedAccount ? selectedAccount.name : '可选账户' }}</text>
+          </view>
+          
+          <!-- 计入预算标签 -->
+          <view class="tag-item budget-tag" :class="{'budget-disabled': !isBudget}" @click="toggleBudget">
+            <custom-icon type="rili" :size="18" color="#FF9500" class="tag-icon"></custom-icon>
+            <text class="tag-text">{{ isBudget ? '计入预算' : '不计入预算' }}</text>
+          </view>
+        </view>
       </view>
       
       <!-- 日期选择器组件 - 紧贴标签行下方 -->
@@ -263,7 +269,9 @@
           y: 0   // 将在页面加载时动态设置
         },
         touchStartX: 0,
-        touchStartY: 0
+        touchStartY: 0,
+        // 游客模式标记
+        isGuest: false
       }
     },
     computed: {
@@ -296,6 +304,10 @@
     },
     
     onShow() {
+      // 更新游客模式标记
+      const guestFlag = uni.getStorageSync('isGuest');
+      this.isGuest = guestFlag === true || guestFlag === 'true';
+      
       // 设置图片预览容器的默认位置为页面最右侧中部
       this.setDefaultImagePosition();
       
@@ -332,6 +344,23 @@
       
       // AI记账相关方法
       async chooseImage() {
+        // 游客模式验证
+        if (this.isGuest) {
+          uni.showModal({
+            title: '提示',
+            content: '请登录后使用AI识别功能',
+            showCancel: false,
+            success: (res) => {
+              if (res.confirm) {
+                uni.navigateTo({
+                  url: '/pages/login/login'
+                });
+              }
+            }
+          });
+          return;
+        }
+        
         try {
           // 先检查AI识别剩余次数
           uni.showLoading({ title: '加载中' });
@@ -602,6 +631,23 @@
       
       // AI记账弹窗相关方法
       showAIChatPopup() {
+        // 游客模式验证
+        if (this.isGuest) {
+          uni.showModal({
+            title: '提示',
+            content: '请登录后使用AI记账功能',
+            showCancel: false,
+            success: (res) => {
+              if (res.confirm) {
+                uni.navigateTo({
+                  url: '/pages/login/login'
+                });
+              }
+            }
+          });
+          return;
+        }
+        
         // 关闭其他可能打开的弹窗，实现互斥逻辑
         // 关闭账本弹窗
         if (this.$refs.ledgerPopup) {
@@ -700,6 +746,24 @@
       
       // 公共：保存处理
       handleSave(stayOnPage) {
+        // 检查是否为游客模式
+        if (this.isGuest) {
+          uni.showModal({
+            title: '提示',
+            content: '请登录后保存账单',
+            showCancel: false,
+            success: (res) => {
+              if (res.confirm) {
+                // 跳转到登录页面
+                uni.navigateTo({
+                  url: '/pages/login/login'
+                });
+              }
+            }
+          });
+          return;
+        }
+        
         // 验证是否选择了子分类
         if (!this.selectedCategory) {
           uni.showToast({ title: '请选择分类', icon: 'none' });
@@ -1665,15 +1729,132 @@
     right: 0;
     background-color: #fff;
     border-top: 1px solid #eee;
-    z-index: 1000;
+    z-index: 1;
     transition: bottom 0.3s ease;
   }
   
   /* 标签容器样式 */
   .tags-container {
-    padding: 10rpx 30rpx;
-    background-color: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+    padding: 0rpx 30rpx;
+  }
+  
+  /* 标签行样式 */
+  .tags-row {
+    display: flex;
+    gap: 20rpx;
+    margin-bottom: 15rpx;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 10rpx;
+  }
+  
+  /* 隐藏滚动条但保留滚动功能 */
+  .tags-row::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* 兼容其他浏览器 */
+  .tags-row {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  /* 标签项样式 */
+  .tag-item {
+    display: flex;
+    align-items: center;
+    padding: 24rpx 48rpx;
+    border-radius: 16rpx;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-weight: bold;
+    font-size: 28rpx;
+  }
+  
+  /* 悬停放大动画效果 */
+  .tag-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  }
+  
+  /* AI记账按钮样式 */
+  .ai-tag {
+    background-color: #FF6B81;
+    color: #ffffff;
+    font-weight: bold;
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .ai-tag:active {
+    background-color: #FF526B;
+  }
+  
+  /* 账本按钮样式 */
+  .ledger-tag {
+    background-color: #ffffff;
+    color: #007AFF;
+    border: 2rpx solid #007AFF;
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .ledger-tag:active {
+    background-color: #f0f8ff;
+  }
+  
+  /* 账户按钮样式 */
+  .account-tag {
+    background-color: #ffffff;
+    color: #34C759;
+    border: 2rpx solid #34C759;
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .account-tag:active {
+    background-color: #f0fff0;
+  }
+  
+  /* 预算标签样式 */
+  .budget-tag {
+    background-color: #ffffff;
+    color: #FF9500;
+    border: 2rpx solid #FF9500;
+    flex: 1;
+    justify-content: center;
+  }
+  
+  /* 不计入预算时的样式 */
+  .budget-tag.budget-disabled {
+    background-color: #ffffff;
+    color: #999;
+    border: 2rpx solid #999;
+  }
+  
+  .tag-item:active {
+    transform: scale(0.98);
+  }
+  
+  .tag-text {
+    font-size: 28rpx;
+    white-space: nowrap;
+    margin-left: 10rpx;
+  }
+  
+  .tag-icon {
+    font-weight: normal;
+  }
+  
+  /* 标签行样式 */
+  .tags-row {
+    display: flex;
+    gap: 20rpx;
+    margin-bottom: 15rpx;
+    flex-wrap: nowrap;
   }
   
   /* 日期选择器包装器样式 */
@@ -1685,11 +1866,28 @@
   .date-picker-wrapper >>> .uni-datetime-picker {
     margin: 0;
     box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+    border-radius: 50rpx;
+    overflow: hidden;
+  }
+  
+  /* 日期选择器输入框样式 */
+  .date-picker-wrapper >>> .uni-datetime-picker__input {
+    border-radius: 50rpx;
+    padding: 0 30rpx;
   }
   
   /* 计算器容器包装器 */
   .calculator-container-wrapper {
     padding: 20rpx 30rpx;
+    background-color: #b4d8f3;
+  }
+  
+  /* 按钮容器样式 */
+  .buttons-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16rpx;
+    margin-top: 20rpx;
   }
   
   /* 计算器底部容器 */
@@ -1711,17 +1909,19 @@
     align-items: center;
     background-color: #fff;
     border: 2px solid #007AFF;
-    border-radius: 12rpx;
+    border-radius: 20rpx;
     overflow: hidden;
     box-shadow: 0 2rpx 10rpx rgba(0, 122, 255, 0.1);
+    padding: 0 20rpx;
   }
   
   .calculator-input {
     flex: 1;
-    height: 88rpx;
-    padding: 0 30rpx;
+    height: 100rpx;
     color: #333;
     min-width: 0;
+    font-size: 28rpx;
+    font-weight: bold;
   }
   
   .calculator-result {
@@ -1729,27 +1929,36 @@
     color: #007AFF;
     font-weight: bold;
     /* 增加最小宽度，确保结果能完全显示 */
-    min-width: 100rpx;
     text-align: right;
     white-space: nowrap;
     overflow: visible;
     border-right: 1px solid #eee;
+    font-size: 32rpx;
   }
   
   .save-button {
     background-color: #007AFF;
     color: #fff;
-    border-radius: 8rpx;
-    height: 88rpx;
-    line-height: 88rpx;
-    font-size: 30rpx;
-    padding: 0 36rpx;
+    border-radius: 20rpx;
+    height: 80rpx;
+    line-height: 80rpx;
+    font-size: 32rpx;
+    padding: 0 40rpx;
     border: none;
     margin: 0 0 0 16rpx;
+    transition: all 0.3s ease;
+    box-shadow: 0 2rpx 8rpx rgba(0, 122, 255, 0.3);
+    cursor: pointer;
+  }
+  
+  .save-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4rpx 16rpx rgba(0, 122, 255, 0.4);
   }
   
   .save-button:active {
     opacity: 0.8;
+    transform: scale(0.98);
   }
   
   .continue-button {
@@ -1760,10 +1969,23 @@
     background-color: #FF4500;
     color: #fff;
     border: 1px solid #FF4500;
-    border-radius: 8rpx;
-    height: 88rpx;
-    padding: 8rpx 36rpx;
+    border-radius: 20rpx;
+    height: 80rpx;
+    padding: 8rpx 40rpx;
     margin-left: 16rpx;
+    transition: all 0.3s ease;
+    box-shadow: 0 2rpx 8rpx rgba(255, 69, 0, 0.3);
+    cursor: pointer;
+  }
+  
+  .continue-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4rpx 16rpx rgba(255, 69, 0, 0.4);
+  }
+  
+  .continue-button:active {
+    opacity: 0.8;
+    transform: scale(0.98);
   }
   
   .continue-line {
@@ -1827,41 +2049,39 @@
   
 
   /* 备注输入框样式 */
-  .memo-input-container {
-    position: relative;
-    width: 100%;
+  .memo-input-wrapper {
+    padding: 20rpx 30rpx;
+    background-color: #fff;
   }
   
-  .memo-textarea {
+  .memo-input {
     width: 100%;
-    min-height: 300rpx;
-    max-height: 400rpx;
-    padding: 20rpx;
+    height: 100rpx;
+    padding: 0 30rpx;
     box-sizing: border-box;
     border: 2rpx solid #E5E5EA;
-    border-radius: 16rpx;
+    border-radius: 20rpx;
     font-size: 28rpx;
     color: #333;
-    resize: none;
-    background-color: #FAFAFA;
+    background-color: #fff;
     transition: all 0.3s ease;
   }
   
-  .memo-textarea:focus {
-    border-color: #FF9500;
+  .memo-input:focus {
+    border-color: #007AFF;
     background-color: #fff;
-    box-shadow: 0 0 0 10rpx rgba(255, 149, 0, 0.05);
+    box-shadow: 0 0 0 10rpx rgba(0, 122, 255, 0.05);
   }
   
-  .memo-textarea::placeholder {
+  .memo-input::placeholder {
     color: #999;
     font-size: 26rpx;
   }
   
-  .memo-count {
+  .memo-input-count {
     position: absolute;
-    right: 20rpx;
-    bottom: 10rpx;
+    right: 60rpx;
+    top: 30rpx;
     font-size: 24rpx;
     color: #999;
     background-color: transparent;
@@ -1963,18 +2183,39 @@
   .tag-item {
     display: flex;
     align-items: center;
-    padding: 0rpx 10rpx;
-    background-color: #f0f0f0;
-    border-radius: 36rpx;
+    padding: 12rpx 24rpx;
+    border-radius: 20rpx;
     justify-content: center;
     transition: all 0.3s ease;
     box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
     position: relative;
+    cursor: pointer;
+  }
+  
+  /* 悬停放大动画效果 */
+  .tag-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  }
+  
+  /* AI记账按钮样式 */
+  .ai-tag {
+    background-color: #E6F7FF;
+    color: #007AFF;
+  }
+  
+  /* 账本按钮样式 */
+  .ledger-tag {
+    color: #0066CC;
+  }
+  
+  /* 账户按钮样式 */
+  .account-tag {
+    color: #FF9500;
   }
   
   /* 预算标签样式 */
   .budget-tag {
-    background-color: #E6F7EF;
     color: #07C160;
   }
   
@@ -1986,11 +2227,11 @@
   
   .tag-item:active {
     background-color: #e0e0e0;
+    transform: scale(0.98);
   }
   
   .tag-text {
     font-size: 28rpx;
-    margin-right: 10rpx;
     white-space: nowrap;
   }
   
@@ -2032,19 +2273,11 @@
     background-color: #d0e7f9;
   }
   
-  /* 账本标签特定样式 */
-  .ledger-tag {
-    background-color: #f0e8fd;
-  }
   
   .ledger-tag:active {
     background-color: #e0d0f9;
   }
   
-  /* 账户标签特定样式 */
-  .account-tag {
-    background-color: #e8fde8;
-  }
   
   .account-tag:active {
     background-color: #d0f9d0;
@@ -2359,24 +2592,24 @@
   
   /* 备注输入框样式 */
   .memo-input-wrapper {
-    padding: 0 30rpx;
-    border-radius: 8rpx;
+    border-radius: 16rpx;
     display: flex;
     align-items: center;
   }
   
   .memo-input {
     flex: 1;
-    height: 60rpx;
+    height: 100rpx;
     font-size: 28rpx;
     color: #333;
-    padding: 0 10rpx;
+    padding: 0 20rpx;
+    background-color: transparent;
   }
   
   .memo-input-count {
     font-size: 24rpx;
     color: #999;
-    margin-left: 10rpx;
+    margin-left: 20rpx;
   }
   /* AI记账弹窗样式 - 提高优先级 */
   .ai-chat-popup-content {

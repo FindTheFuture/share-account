@@ -12,9 +12,6 @@
 	import {
 		version
 	} from './package.json'
-	// #ifdef APP
-	import checkUpdate from '@/uni_modules/uni-upgrade-center-app/utils/check-update';
-	// #endif
 	// 引入back_url配置
 	import $backUrlConfig from './common/back_url.js';
 	export default {
@@ -38,11 +35,6 @@
 		// #endif
 		console.log('App Launch');
 		// #ifdef APP-PLUS
-		// App平台检测升级
-		if (plus.runtime.appid !== 'HBuilder') {
-			checkUpdate()
-		}
-
 		// 一键登录预登陆
 		uni.preLogin({
 			provider: 'univerify',

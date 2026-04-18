@@ -5,17 +5,17 @@
       <!-- 成员名称 -->
       <view class="form-item">
         <text class="form-label">朋友名称</text>
-        <input v-model="formData.name" placeholder="给ta起个名字吧" />
+        <input v-model="formData.name" @input="onNameInput" placeholder="朋友名字" />
       </view>
       
       
 
       <view class="button-container">
         <!-- 编辑模式下，如果状态不为0则显示保存按钮 -->
-        <button v-if="isEditMode && status !== 0" @click="submitForm" class="share-wechat-btn">保存</button>
+        <button v-if="isEditMode && status !== 0" @click="submitForm" class="share-wechat-btn" :class="{ 'btn-disabled': !isNameValid }">保存</button>
         <!-- 微信小程序专用分享按钮，带有open-type="share"属性 -->
         <!-- 这是微信小程序推荐的触发onShareAppMessage的标准方式 -->
-        <button v-if="!isEditMode || status === 0"  open-type="share"  class="share-wechat-btn" > 快邀请你的朋友吧 </button>
+        <button v-if="!isEditMode || status === 0" open-type="share" class="share-wechat-btn" :class="{ 'btn-disabled': !isNameValid }"> 快邀请你的朋友吧 </button>
       </view>
       <view class="tip-container">
         快与ta共享你的收入/支出吧😄
@@ -58,6 +58,12 @@ export default {
       }
     };
   },
+  computed: {
+    // 检查名称是否有效
+    isNameValid() {
+      return this.formData.name && this.formData.name.trim().length > 0;
+    }
+  },
   onLoad(options) {
     // 检查是否为编辑模式
     if (options.id) {
@@ -85,6 +91,15 @@ export default {
   // 注意：这是组件的顶层方法，不是methods的一部分
   // 这样微信小程序框架才能正确识别并调用它
   async onShareAppMessage() {
+    // 验证名称是否为空
+    if (!this.formData.name || this.formData.name.trim().length === 0) {
+      uni.showToast({
+        title: '请先输入朋友名称',
+        icon: 'none'
+      });
+      return false; // 阻止分享
+    }
+    
     try {
       const memberId = await this.submitForm();
       console.log('获取到成员id:', memberId);
@@ -106,6 +121,12 @@ export default {
   },
 
   methods: {
+    // 输入名称时的处理
+    onNameInput() {
+      // 触发 computed 属性重新计算
+      this.$forceUpdate();
+    },
+    
     // 加载成员数据（编辑模式）
     async loadMemberData() {
       try {
@@ -317,6 +338,17 @@ export default {
     font-weight: 500;
     box-shadow: 0 4rpx 15rpx rgba(7, 193, 96, 0.3);
     width: 100%;
+    transition: all 0.3s ease;
+  }
+  
+  .share-wechat-btn.btn-disabled {
+    background-color: #cccccc;
+    box-shadow: none;
+    opacity: 0.7;
+  }
+  
+  .share-wechat-btn.btn-disabled:active {
+    transform: none;
   }
   
   .share-button {

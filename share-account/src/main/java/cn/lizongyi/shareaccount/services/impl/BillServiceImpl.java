@@ -67,6 +67,11 @@ public class BillServiceImpl implements BillService {
     }
 
     @Override
+    public int countByUserId(Long userId) {
+        return billMapper.countByUserId(userId);
+    }
+
+    @Override
     public List<Bill> findByLedgerId(Long ledgerId) {
         return billMapper.findByLedgerId(ledgerId);
     }
@@ -103,18 +108,23 @@ public class BillServiceImpl implements BillService {
         if (topClassId != null && topClassId == 1L && finalPrice != null && finalPrice > 0) {
             finalPrice = -finalPrice;
         }
+
+        Long userId = baseHandler.getUserId();
+        if(userId == null){
+            userId = request.getUserId();
+        }
         
-        bill.setUserId(baseHandler.getUserId())
-                .setLedgerId(request.getLedgerId())
-                .setAccountId(request.getAccountId())
-                .setClassId(request.getClassId())
-                .setTopClassId(topClassId)
-                .setIsBudget(request.getIsBudget())
-                .setBillTime(request.getBillTime() != null ? request.getBillTime() : LocalDateTime.now())
-                .setPrice(finalPrice)
-                .setStatus(request.getStatus())
-                .setMemo(request.getMemo())
-                .setCreateTime(LocalDateTime.now());
+        bill.setUserId(userId)
+            .setLedgerId(request.getLedgerId())
+            .setAccountId(request.getAccountId())
+            .setClassId(request.getClassId())
+            .setTopClassId(topClassId)
+            .setIsBudget(request.getIsBudget())
+            .setBillTime(request.getBillTime() != null ? request.getBillTime() : LocalDateTime.now())
+            .setPrice(finalPrice)
+            .setStatus(request.getStatus())
+            .setMemo(request.getMemo())
+            .setCreateTime(LocalDateTime.now());
         
         int result = billMapper.insert(bill);
 
@@ -193,7 +203,7 @@ public class BillServiceImpl implements BillService {
     }
     
     @Override
-    public MonthlyStatisticsResponse getMonthlyStatisticsByLedgerId(Long ledgerId) {
+    public MonthlyStatisticsResponse getMonthlyStatisticsByLedgerId(Long ledgerId, Integer year, Integer month) {
         if (ledgerId == null || ledgerId <= 0) {
             return null;
         }
@@ -202,19 +212,18 @@ public class BillServiceImpl implements BillService {
             log.info("无权限查看该账本统计: userId={}, ledgerId={}", currentUserId, ledgerId);
             return null;
         }
-        
-        // 获取当前年份和月份
-        LocalDateTime now = LocalDateTime.now();
-        int year = now.getYear();
-        int month = now.getMonthValue();
-        
-        // 获取本月第一天和最后一天的时间范围
-        LocalDateTime startOfMonth = LocalDateTime.of(year, month, 1, 0, 0, 0);
-        LocalDateTime endOfMonth = LocalDateTime.of(year, month, startOfMonth.toLocalDate().lengthOfMonth(), 23, 59, 59);
-        
+
+        // 使用传入的年份和月份，如果为空则使用当前年月
+        int queryYear = year != null ? year : LocalDateTime.now().getYear();
+        int queryMonth = month != null ? month : LocalDateTime.now().getMonthValue();
+
+        // 获取指定年月第一天和最后一天的时间范围
+        LocalDateTime startOfMonth = LocalDateTime.of(queryYear, queryMonth, 1, 0, 0, 0);
+        LocalDateTime endOfMonth = LocalDateTime.of(queryYear, queryMonth, startOfMonth.toLocalDate().lengthOfMonth(), 23, 59, 59);
+
         // 查询该账本下的所有账单
         List<Bill> bills = billMapper.findByLedgerIdAndTimeRange(ledgerId, startOfMonth, endOfMonth);
-        
+
         long income = 0;
         long expense = 0;
         for (Bill bill : bills) {
@@ -231,8 +240,8 @@ public class BillServiceImpl implements BillService {
         }
         MonthlyStatisticsResponse response = new MonthlyStatisticsResponse();
         response.setLedgerId(ledgerId);
-        response.setYear(year);
-        response.setMonth(month);
+        response.setYear(queryYear);
+        response.setMonth(queryMonth);
         response.setIncome(income);
         response.setExpense(expense);
         response.setBalance(income - expense);

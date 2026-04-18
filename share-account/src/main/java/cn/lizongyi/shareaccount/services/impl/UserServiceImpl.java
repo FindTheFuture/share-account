@@ -14,6 +14,8 @@ import cn.lizongyi.shareaccount.services.MemberLevelService;
 import cn.lizongyi.shareaccount.services.PictureService;
 import cn.lizongyi.shareaccount.services.UserMemberService;
 import cn.lizongyi.shareaccount.services.UserService;
+import cn.lizongyi.shareaccount.services.BillService;
+import org.springframework.context.annotation.Lazy;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import java.util.Comparator;
@@ -48,6 +50,10 @@ public class UserServiceImpl implements UserService {
     
     @Autowired
     private UserMemberService userMemberService;
+    
+    @Lazy
+    @Autowired
+    private BillService billService;
     
     // 创建线程池用于异步操作
     private final ExecutorService executorService = Executors.newFixedThreadPool(5);
@@ -87,7 +93,7 @@ public class UserServiceImpl implements UserService {
 
         Integer role = baseHandler.getUserRole(baseHandler.getUserId());
         boolean isAdmin = role == RoleTypeEnum.ADMIN.getId() || baseHandler.getUserId() == user.getId();
-        UserResponse userResponse = UserResponse.fromUser(user, isAdmin ? RoleTypeEnum.ADMIN.getId() : RoleTypeEnum.USER.getId());
+        UserResponse userResponse = UserResponse.fromUser(user, isAdmin ? RoleTypeEnum.ADMIN.getId() : RoleTypeEnum.USER.getId(), null);
         fillPicture(userResponse);
         fillUserMemberLevel(userResponse);
 
@@ -186,7 +192,7 @@ public class UserServiceImpl implements UserService {
         }
         List<User> userList = pageInfo.getList();
         if (!CollectionUtils.isEmpty(userList)) {
-            response.setUserList(userList.stream().map(user -> UserResponse.fromUser(user, RoleTypeEnum.ADMIN.getId())).collect(Collectors.toList()));
+            response.setUserList(userList.stream().map(user -> UserResponse.fromUser(user, RoleTypeEnum.ADMIN.getId(), billService.countByUserId(user.getId()))).collect(Collectors.toList()));
         }
         response.setTotalNum(pageInfo.getTotal());
         response.setPageTotalNum(pageInfo.getPages());

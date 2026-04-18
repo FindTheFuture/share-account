@@ -7,7 +7,6 @@
 
     <!-- 表单内容 -->
     <view class="form-container" v-else>
-      <view class="form-title">个人/情侣/家庭/班级/公司/婚礼/聚餐等各种需要记录收支的场景都可以建一个账本</view>
       <!-- 账本名称 -->
       <view class="form-item">
         <view class="form-label">账本名称<text class="required">*</text></view>

@@ -29,6 +29,14 @@ public interface BillService {
      */
     List<cn.lizongyi.shareaccount.entity.Bill> findByUserId(Long userId);
 
+
+    /**
+     * 根据用户 ID 统计该用户的账单数量
+     * @param userId 用户 ID
+     * @return 账单数量
+     */
+    int countByUserId(Long userId);
+
     /**
      * 根据账本 ID 查询该账本的账单列表
      * @param ledgerId 账本 ID
@@ -72,11 +80,13 @@ public interface BillService {
     BillResponse findBillResponseById(Long billId);
     
     /**
-     * 获取账本本月收支统计
+     * 获取账本指定年月收支统计
      * @param ledgerId 账本ID
+     * @param year 年份
+     * @param month 月份
      * @return 包含收入、支出和结余的统计信息
      */
-    MonthlyStatisticsResponse getMonthlyStatisticsByLedgerId(Long ledgerId);
+    MonthlyStatisticsResponse getMonthlyStatisticsByLedgerId(Long ledgerId, Integer year, Integer month);
     
 
     

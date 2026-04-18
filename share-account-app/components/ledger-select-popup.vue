@@ -4,13 +4,14 @@
       <view class="popup-header">
         <view class="title-with-icon">
           <text class="popup-title">选择账本</text>
-          <uni-icons type="info" size="18" color="#999" class="notify-tip-icon" @click.stop="onLedgerTipClick" />
+          <uni-icons type="info" size="18" color="#999" class="notify-tip-icon icon-hover" @click.stop="onLedgerTipClick" />
         </view>
         <view class="popup-actions">
-          <custom-icon type="bianji" :size="20" color="#007AFF" @tap="navigateToLedgerList" style="margin-right: 20rpx;"></custom-icon>
-          <custom-icon type="guanbi" :size="20" color="#999" @tap="close"></custom-icon>
+          <custom-icon type="bianji" :size="20" color="#007AFF" @tap="navigateToLedgerList" class="icon-hover"></custom-icon>
+          <custom-icon type="guanbi" :size="20" color="#999" @tap="close" class="icon-hover"></custom-icon>
         </view>
       </view>
+      <view class="divider"></view>
       <view class="popup-content">
         <div>
           <!-- 别人分享给我的账本：分组展示，置于顶部，头像与名称样式与ledger.vue一致 -->
@@ -20,27 +21,28 @@
                 <view class="avatar-small">
                   <user-avatar :avatarUrl="group.parentUserPictureAddress" :clickable="false" :uploadable="false" :showEditMask="false" />
                 </view>
-                <text class="shared-title-name">{{ group.parentUserName }}</text>
-                <view class="shared-title-suffix">
-                  <text>分享的账本</text>
-                  <uni-icons type="info" size="18" color="#999" class="notify-tip-icon" @click.stop="onSharedLedgerTipClick" />
+                <view class="shared-title-content">
+                  <text class="shared-title-name">{{ group.parentUserName }}</text>
+                  <text class="shared-title-label">分享的账本</text>
+                  <uni-icons type="info" size="18" color="#999" class="notify-tip-icon icon-hover" @click.stop="onSharedLedgerTipClick" />
                 </view>
               </view>
               <view class="ledger-list">
                 <view 
-                  v-for="s in group.ledgers" 
+                  v-for="(s, index) in group.ledgers" 
                   :key="s.id"
-                  :class="['ledger-item', { 'selected': selectedLedger && selectedLedger.id === s.id }]"
+                  :class="['ledger-item', 'ledger-card', { 'selected': selectedLedger && selectedLedger.id === s.id }]"
+                  :style="{ animationDelay: (index * 0.1) + 's' }"
                   @tap="selectLedger(s)"
                 >
                   <view class="ledger-info-row ledger-name-row">
                     <text class="ledger-name">{{ s.name }}</text>
-                    <button class="item-share-btn" @tap.stop="navigateToAddMember(s)">分享</button>
                   </view>
-                  <view class="ledger-info-row">
+                  <view class="ledger-info-row ledger-tags">
                     <text class="ledger-type-text">{{ s.typeName }}</text>
                     <text class="ledger-property-text">{{ s.propertyName }}</text>
                   </view>
+                  <button class="item-share-btn breath-animation" @tap.stop="navigateToAddMember(s)">分享</button>
                 </view>
               </view>
             </view>
@@ -55,27 +57,29 @@
           <!-- 自己的账本列表：置于共享列表后面 -->
           <view class="ledger-list" v-if="ledgers.length > 0">
             <view 
-              v-for="ledger in ledgers" 
+              v-for="(ledger, index) in ledgers" 
               :key="ledger.id"
-              :class="['ledger-item', { 'selected': selectedLedger && selectedLedger.id === ledger.id }]"
+              :class="['ledger-item', 'ledger-card', { 'selected': selectedLedger && selectedLedger.id === ledger.id }]"
+              :style="{ animationDelay: (index * 0.1) + 's' }"
               @tap="selectLedger(ledger)"
             >
               <view class="ledger-info-row ledger-name-row">
                 <text class="ledger-name">{{ ledger.name }}</text>
-                <button class="item-share-btn" @tap.stop="navigateToAddMember(ledger)">分享</button>
               </view>
-              <view class="ledger-info-row">
+              <view class="ledger-info-row ledger-tags">
                 <text class="ledger-type-text">{{ ledger.typeName }}</text>
                 <text class="ledger-property-text">{{ ledger.propertyName }}</text>
                 <text v-if="ledger.isDefault === 1" class="default-badge">默认</text>
               </view>
+              <button class="item-share-btn breath-animation" @tap.stop="navigateToAddMember(ledger)">分享</button>
             </view>
             <!-- 底部操作：查看共享账单 + 不选账本 -->
+            <view class="divider"></view>
             <view class="bottom-actions">
-              <view v-if="showShareBillAction" class="share-all-bills" @tap="onShareAllBillsTap">
+              <view v-if="showShareBillAction" class="share-all-bills btn-hover" @tap="onShareAllBillsTap">
                 <text class="share-all-bills-text">查看所有共享账单</text>
               </view>
-              <view class="no-select-account" @tap="clearLedgerSelection">
+              <view class="no-select-account btn-hover" @tap="clearLedgerSelection">
                 <text class="no-select-account-text">不选账本</text>
               </view>
             </view>
@@ -124,7 +128,8 @@ export default {
     return {
       ledgers: [],
       needRefreshLedgers: false,
-      sharedGroups: []
+      sharedGroups: [],
+      isGuest: false
     };
   },
   methods: {
@@ -208,6 +213,10 @@ export default {
       return Object.values(map);
     },
     open() {
+      // 检查游客模式状态
+      const guestFlag = uni.getStorageSync('isGuest');
+      this.isGuest = guestFlag === true || guestFlag === 'true';
+      
       if (this.ledgers.length === 0) {
         this.loadLedgers();
       }
@@ -239,6 +248,23 @@ export default {
       });
     },
     navigateToAddMember(ledger) {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后分享账本',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       const id = ledger && (ledger.id || ledger.ledgerId);
       if (!id) return;
       uni.navigateTo({
@@ -276,10 +302,20 @@ export default {
         }
       }
     },
-    initAutoSelect() {
-      this.loadLedgers();
+    async initAutoSelect() {
+      // 强制重新加载账本数据
+      await this.loadLedgers();
       if (this.queryShared) {
-        this.loadSharedLedgers();
+        await this.loadSharedLedgers();
+      }
+      // 加载完成后，自动选择默认账本
+      if (this.autoSelectDefault && (!this.selectedLedger || !this.selectedLedger.id)) {
+        const defaultLedger = this.ledgers.find(ledger => ledger.isDefault === 1);
+        if (defaultLedger) {
+          this.$emit('select', defaultLedger);
+        } else if (this.ledgers.length > 0) {
+          this.$emit('select', this.ledgers[0]);
+        }
       }
     },
     onLedgerTipClick() {
@@ -312,11 +348,11 @@ export default {
 <style scoped>
 /* 弹出层样式 */
 .popup-container {
-  width: 680rpx;
-  background-color: #fff;
+  width: 720rpx;
+  background-color: #ffffff;
   border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 10rpx 40rpx rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.15);
   /* 自适应内容高度，超过视口时限制最大高度 */
   height: auto;
   max-height: 80vh;
@@ -324,44 +360,155 @@ export default {
   flex-direction: column;
 }
 
+/* 分割线样式 */
+.divider {
+  height: 1rpx;
+  background-color: #f0f0f0;
+  width: 100%;
+}
+
 .popup-header {
-  padding: 30rpx 40rpx;
+  padding: 24rpx 32rpx;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #FAFAFA;
+  background-color: #ffffff;
 }
 
 .popup-title {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #333333;
 }
 .title-with-icon {
   display: flex;
   align-items: center;
-  gap: 8rpx;
+  gap: 12rpx;
 }
 .notify-tip-icon {
-  margin-left: 8rpx;
+  margin-left: 0;
+}
+
+/* 图标悬浮动画效果 */
+.icon-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  padding: 12rpx;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-hover:hover {
+  transform: scale(1.2);
+  background-color: #f5f5f5;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 弹出层操作按钮样式 */
+.popup-actions {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
 }
 
 .popup-content {
   /* 不强制撑满，按内容自适应；内容过长时内部滚动 */
   overflow-y: auto;
-  padding: 30rpx 40rpx;
+  padding: 24rpx 32rpx;
   /* 预留头部空间后最大高度，避免整体弹窗超高 */
   max-height: calc(80vh - 140rpx);
 }
 
+/* 从左侧滑入动画 */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 呼吸动画效果 */
+@keyframes breath {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.breath-animation {
+  animation: breath 1.5s ease-in-out infinite;
+}
+
+/* 按钮悬浮动画效果 */
+.btn-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  padding: 12rpx 24rpx;
+  border-radius: 12rpx;
+  display: inline-block;
+}
+
+.btn-hover:hover {
+  transform: scale(1.1);
+  background-color: #f5f5f5;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 账本卡片样式 */
+.ledger-card {
+  background-color: #f8f0f8;
+  border: none;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  animation: slideInLeft 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.ledger-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.1);
+}
+
+.ledger-card:active {
+  background-color: #f0e6f0;
+}
+
+.ledger-card.selected {
+  background-color: #e8f4fd;
+  border: 2rpx solid #007AFF;
+  box-shadow: 0 4rpx 16rpx rgba(0, 122, 255, 0.2);
+}
+
+.ledger-tags {
+  gap: 8rpx;
+}
+
 /* 账本列表样式 */
 .ledger-list {
-  padding: 20rpx;
+  padding: 0;
+  margin-bottom: 24rpx;
 }
 
 .ledger-item {
-  padding: 25rpx;
+  padding: 24rpx;
   border-bottom: 1px solid #f0f0f0;
 }
 
@@ -397,9 +544,11 @@ export default {
 
 .default-badge {
   font-size: 24rpx;
-  color: #007AFF;
-  background: none;
-  padding: 0;
+  color: #ffffff;
+  background-color: #007AFF;
+  padding: 4rpx 16rpx;
+  border-radius: 16rpx;
+  margin-right: 16rpx;
 }
 
 /* 账本类型和属性文本样式 */
@@ -415,23 +564,32 @@ export default {
 
 /* 分享按钮（右上角） */
 .item-share-btn {
-  background-color: #FF4500;
+  background-color: #ff7043;
   color: #ffffff;
   border: none;
   border-radius: 24rpx;
-  height: 50rpx;
-  line-height: 50rpx;
+  height: 56rpx;
+  line-height: 56rpx;
   font-size: 24rpx;
-  margin-left: auto;
+  padding: 0 24rpx;
+  position: absolute;
+  top: 24rpx;
+  right: 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(255, 112, 67, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.item-share-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6rpx 16rpx rgba(255, 112, 67, 0.5);
 }
 
 /* 不选账本按钮 */
 .no-select-account {
-  padding: 25rpx;
-  text-align: center;
+  padding: 16rpx;
 }
 .no-select-account-text {
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #007AFF;
   text-decoration: underline;
 }
@@ -440,11 +598,12 @@ export default {
 .bottom-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 25rpx;
+  justify-content: center;
+  gap: 40rpx;
+  padding: 20rpx 0;
 }
 .share-all-bills-text {
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #007AFF;
   text-decoration: underline;
 }
@@ -458,34 +617,130 @@ export default {
 
 /* 无数据提示 */
 .no-data-tip {
-  padding: 60rpx 20rpx;
+  padding: 48rpx 20rpx;
   text-align: center;
-  font-size: 28rpx;
-  color: #999;
+  font-size: 24rpx;
+  color: #999999;
 }
 
 /* 分组标题样式，保持与ledger.vue一致 */
-.shared-title {
+.section-title {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-}
-.avatar-small {
-  width: 64rpx;
-  height: 64rpx;
-  transform: scale(0.32);
-  transform-origin: left center;
-  overflow: visible;
-  display: flex;
-  align-items: center;
-}
-.shared-title-name {
-  font-size: 32rpx;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+  padding: 12rpx 0;
+  font-size: 24rpx;
   font-weight: bold;
   color: #333333;
 }
+
+.shared-title {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+  padding: 12rpx 0;
+}
+
+.section-title.shared-title .avatar-small {
+  width: 96rpx !important;
+  height: 96rpx !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-right: 16rpx !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  max-width: 96rpx !important;
+  max-height: 96rpx !important;
+  border-radius: 50% !important;
+}
+
+/* 移除朋友头像的背景色 */
+.section-title.shared-title .avatar-small .user-avatar-container {
+  width: 96rpx !important;
+  height: 96rpx !important;
+  max-width: 96rpx !important;
+  max-height: 96rpx !important;
+  overflow: hidden !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.section-title.shared-title .avatar-small .avatar-wrapper {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  width: 96rpx !important;
+  height: 96rpx !important;
+  max-width: 96rpx !important;
+  max-height: 96rpx !important;
+  overflow: hidden !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.section-title.shared-title .avatar-small .avatar-img {
+  border-radius: 50% !important;
+  width: 96rpx !important;
+  height: 96rpx !important;
+  max-width: 96rpx !important;
+  max-height: 96rpx !important;
+  overflow: hidden !important;
+  object-fit: cover !important;
+}
+
+/* 调整共享标题布局，确保头像不遮挡文字 */
+.shared-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding: 12rpx 0;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.shared-title-content {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.shared-title-name {
+  font-size: 24rpx;
+  font-weight: bold;
+  color: #333333;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shared-title-label {
+  font-size: 24rpx;
+  color: #999999;
+  flex-shrink: 1;
+  white-space: nowrap;
+}
+
+/* 调整info图标位置，使其靠近文字 */
+.shared-title-content .notify-tip-icon {
+  margin-left: 8rpx;
+  margin-right: 0;
+  flex-shrink: 0;
+}
+
 .shared-title-suffix {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #999999;
   margin-left: 8rpx;
 }

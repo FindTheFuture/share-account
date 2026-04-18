@@ -33,6 +33,7 @@ public class UserResponse {
     private Boolean isGuest;    // 是否为游客账号
     private Integer memberLevel; // 会员等级
     private String memberLevelIcon; // 等级图标
+    private Integer billCount; // 账单数量
 
 
     public static UserResponse fromUser(User user) {
@@ -57,7 +58,7 @@ public class UserResponse {
 
 
 
-    public static UserResponse fromUser(User user, Integer role) {
+    public static UserResponse fromUser(User user, Integer role, Integer billCount) {
 
         UserResponse userResponse = fromUser(user);
         if(userResponse == null || role == null || role == RoleTypeEnum.USER.getId()){
@@ -70,6 +71,7 @@ public class UserResponse {
         userResponse.setRoleName(RoleTypeEnum.fromId(user.getRole()).getName());
         userResponse.setLastLoginTime(DateUtil.localDateTimeToString(user.getLastLoginTime()));
         userResponse.setCreateTime(DateUtil.localDateTimeToString(user.getCreateTime()));
+        userResponse.setBillCount(billCount);
         return userResponse;
     }
 

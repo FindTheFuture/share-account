@@ -5,23 +5,22 @@
       <view v-if="bills.length === 0" class="empty-bills">
         <text>暂无账单记录</text>
       </view>
-      <view v-for="bill in bills" :key="bill.id" :class="['bill-item', { 'bill-deleted': bill.status === 1 }]" @click="showBillDetail(bill)">
-        <text class="bill-id">#{{ bill.id }}</text>
+      <view v-for="(bill, index) in bills" :key="bill.id" :class="['bill-item', { 'bill-deleted': bill.status === 1 }]" @click="showBillDetail(bill)" :style="{ animationDelay: index * 0.1 + 's' }">
         <view class="bill-icon-no-bg">
-          <view class="class-icon">
+          <view class="class-icon" :style="{ backgroundColor: getRandomBgColor(bill.id) }">
             <template v-if="hasFontIcon(bill.classIcon)">
-              <custom-icon :type="normalizeIcon(bill.classIcon)" :size="30" :color="billIconColor"></custom-icon>
+              <custom-icon :type="normalizeIcon(bill.classIcon)" :size="25" color="#ffffff" style="color: #ffffff !important;"></custom-icon>
             </template>
             <template v-else>
-              <text class="first-char-icon" :style="{ color: billIconColor }">{{ firstChar(bill.className) }}</text>
+              <text class="first-char-icon" style="color: #ffffff !important; font-size: 52rpx;">{{ firstChar(bill.className) }}</text>
             </template>
           </view>
         </view>
         <view class="bill-info">
           <view class="bill-main-info">
-            <text class="bill-category">{{ bill.className || '未分类' }}</text>
+            <text :class="['bill-category', bill.price > 0 ? 'income' : 'expense']">{{ bill.className || '未分类' }}</text>
             <text :class="['bill-amount', bill.price > 0 ? 'income' : 'expense']">
-              {{ bill.price > 0 ? '+' : '-' }}{{ formatAmount(Math.abs(bill.price) / 100) }}
+              <text v-if="bill.price > 0">🚀 </text>{{ bill.price > 0 ? '+' : '-' }}{{ formatAmount(Math.abs(bill.price) / 100) }}
             </text>
           </view>
           <view class="bill-sub-info" style="display:flex;align-items:center;flex-wrap:wrap;margin-top:6rpx;">
@@ -69,13 +68,13 @@
     </view>
 
     <!-- 账单详情弹窗 -->
-    <uni-popup ref="billPopup" type="bottom" :custom="true" :mask-click="true" @close="closeBillPopup">
+    <uni-popup ref="billPopup" type="bottom" :custom="true" :mask-click="true" @close="closeBillPopup" @maskClick="onMaskClick">
       <view class="bill-popup">
         <view class="popup-header">
           <text class="popup-title">账单详情</text>
           <view class="popup-actions-header">
-            <button open-type="share" class="action-text action-share" @touchstart="prepareShareMember" @tap="onShareClick">分享</button>
-            <button class="action-text action-comment" @click="openComments">评论</button>
+            <button v-if="!isGuest" open-type="share" class="action-text action-share breath-animation" @touchstart="prepareShareMember" @tap="onShareClick">分享</button>
+            <button class="action-text action-comment breath-animation" @click="openComments">评论</button>
              <custom-icon v-if="isCurrentUserOwner && currentBill && currentBill.status === 0" type="bianji" :size="21" color="#1989fa" @click="editBill" class="action-icon"></custom-icon>
              <custom-icon v-if="isCurrentUserOwner && currentBill && currentBill.status === 0" type="shanchu" :size="21" color="#ff4d4f" @click="deleteBill" class="action-icon"></custom-icon>
              <custom-icon v-if="isCurrentUserOwner && currentBill && currentBill.status === 1" type="qiyong" :size="23" color="#07c160" @click="enableBill" class="action-icon"></custom-icon>
@@ -89,6 +88,10 @@
               <text class="detail-label">创建人</text>
               <text class="detail-value">{{ currentBill.createUserName || currentBill.userName || '-' }}</text>
             </view>
+            <view class="detail-row">
+              <text class="detail-label">账单ID</text>
+              <text class="detail-value">{{ currentBill.id }}</text>
+            </view>
              <view class="detail-row">
                <text class="detail-label">分类</text>
                <view class="detail-value">
@@ -97,7 +100,7 @@
             </view>
             <view class="detail-row">
               <text class="detail-label">金额</text>
-              <text :class="['detail-value', currentBill.price > 0 ? 'income' : 'expense']">
+              <text :class="['detail-value', 'detail-amount', currentBill.price > 0 ? 'income' : 'expense']">
                 {{ currentBill.price > 0 ? '+' : '-' }}{{ formatAmount(Math.abs(currentBill.price) / 100) }}
               </text>
             </view>
@@ -239,6 +242,11 @@ export default {
     // 初始化游客模式标记
     const guestFlag = uni.getStorageSync('isGuest');
     this.isGuest = guestFlag === true || guestFlag === 'true';
+    
+    // 延迟加载数据，确保组件完全初始化后再加载，避免重复加载
+    setTimeout(() => {
+      this.loadBillList();
+    }, 100);
   },
   computed: {
     ...mapGetters(['themePrimaryColor']),
@@ -251,12 +259,20 @@ export default {
     }
   },
   watch: {
-    // 监听请求参数变化，立即按传入参数加载数据
+    // 监听请求参数变化，按传入参数加载数据
     requestParams: {
       deep: true,
-      immediate: true,
+      immediate: false,
       handler() {
         this.loadBillList();
+      }
+    },
+    // 监听弹窗可见性变化，通知父组件
+    billPopupVisible: {
+      deep: true,
+      immediate: false,
+      handler(newVal) {
+        this.$emit('popup-visible', newVal);
       }
     }
   },
@@ -289,6 +305,23 @@ export default {
       return isIn ? 'budget-in' : 'budget-out';
     },
     openComments() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后查看评论',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
       if (!this.currentBill || !this.currentBill.id) {
         uni.showToast({ title: '账单信息错误', icon: 'none' });
         return;
@@ -430,6 +463,10 @@ export default {
     // 显示账单详情
     async showBillDetail(bill) {
       if (!bill || !bill.id) return;
+      // 更新游客模式状态
+      const guestFlag = uni.getStorageSync('isGuest');
+      this.isGuest = guestFlag === true || guestFlag === 'true';
+      
       this.currentBill = bill;
       this.shareMemberId = null;
       this.billPopupVisible = true;
@@ -441,24 +478,64 @@ export default {
         this._sharePreparing = false;
       }
       this.$emit('show-detail', bill);
+      // 触发弹窗显示事件，通知父组件
+      this.$emit('popup-visible', true);
 
     },
     
     // 关闭账单弹窗
     closeBillPopup() {
-      if (this.$refs.billPopup) {
-        this.$refs.billPopup.close();
-      }
+      // 先重置变量
       this.billPopupVisible = false;
       this.currentBill = null;
       this.shareMemberId = null;
       this.shareIntent = false;
       // 触发关闭详情事件
       this.$emit('close-detail');
+      // 触发弹窗关闭事件，通知父组件
+      this.$emit('popup-visible', false);
+      // 最后关闭弹窗
+      if (this.$refs.billPopup) {
+        // 使用 setTimeout 避免递归调用
+        setTimeout(() => {
+          this.$refs.billPopup.close();
+        }, 100);
+      }
+    },
+    
+    // 处理遮罩层点击事件
+    onMaskClick() {
+      // 重置变量
+      this.billPopupVisible = false;
+      this.currentBill = null;
+      this.shareMemberId = null;
+      this.shareIntent = false;
+      // 触发关闭详情事件
+      this.$emit('close-detail');
+      // 触发弹窗关闭事件，通知父组件
+      this.$emit('popup-visible', false);
     },
     
     // 编辑账单
     editBill() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后编辑账单',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
+      
       if (!this.currentBill) {
         uni.showToast({
           title: '账单信息错误',
@@ -569,6 +646,24 @@ export default {
     
     // 删除账单
     deleteBill() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后删除账单',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
+      
       if (!this.currentBill || !this.currentBill.id) {
         uni.showToast({
           title: '账单信息错误',
@@ -639,6 +734,24 @@ export default {
 
     // 彻底删除账单
     deleteCompletelyBill() {
+      // 检查是否为游客模式
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后彻底删除账单',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              // 跳转到登录页面
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
+      
       if (!this.currentBill || !this.currentBill.id) {
         uni.showToast({
           title: '账单信息错误',
@@ -834,6 +947,18 @@ export default {
       if (!name || typeof name !== 'string') return '账';
       const s = name.trim();
       return s.length > 0 ? s[0] : '账';
+    },
+    
+    // 生成随机鲜艳背景色
+    getRandomBgColor(id) {
+      // 使用id作为种子，确保相同id的图标背景色一致
+      const colors = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+        '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+        '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA'
+      ];
+      const index = Math.abs(parseInt(id)) % colors.length;
+      return colors[index];
     }
   }
 };
@@ -873,10 +998,10 @@ export default {
 }
 
 .bill-amount {
-  font-size: 32rpx;
+  font-size: 56rpx;
   font-weight: bold;
   padding-left: 20rpx; /* 给金额字段左侧添加内边距，避免与其他内容太挤 */
-  min-width: 120rpx; /* 设置最小宽度，确保金额完整显示 */
+  min-width: 150rpx; /* 设置最小宽度，确保金额完整显示 */
   text-align: right; /* 确保金额右对齐 */
 }
 
@@ -886,8 +1011,8 @@ export default {
 
 /* 移除背景色的账单图标 */
 .bill-icon-no-bg {
-  width: 80rpx;
-  height: 80rpx;
+  width: 100rpx;
+  height: 100rpx;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -904,18 +1029,21 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 85rpx;
+  height: 85rpx;
+  border-radius: 50%;
+  background-color: #f0f0f0;
 }
 
 /* 首字图标样式 */
 .first-char-icon {
-  font-size: 44rpx;
-  line-height: 60rpx;
+  font-size: 52rpx;
+  line-height: 85rpx;
   text-align: center;
   display: inline-block;
-  font-weight: bold;
-  color: #faad14;
-  width: 60rpx;
-  height: 60rpx;
+  color: #ffffff;
+  width: 85rpx;
+  height: 85rpx;
 }
 
 .bill-info {
@@ -1023,10 +1151,93 @@ export default {
   z-index: 998;
 }
 
+/* 优化uni-popup层级，确保覆盖所有其他元素 */
+:deep(.uni-popup) {
+  z-index: 9999 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background-color: transparent;
+  pointer-events: auto;
+  will-change: transform;
+}
+
+:deep(.uni-popup__content) {
+  z-index: 10000 !important;
+  position: relative !important;
+}
+
+:deep(.uni-popup__mask) {
+  z-index: 9998 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  pointer-events: auto;
+  -webkit-transform: none;
+  transform: none;
+  will-change: opacity;
+  transform: translateZ(0);
+}
+
 @keyframes popupSlideUp {
   to {
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* 图标旋转动画 */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.class-icon:hover custom-icon,
+.class-icon:hover .first-char-icon {
+  animation: rotate 1s ease-in-out forwards;
+}
+
+@keyframes breath {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bubbleIn {
+  from {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.breath-animation {
+  animation: breath 2s ease-in-out infinite;
+}
+
+.bill-item {
+  animation: bubbleIn 0.4s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 .bill-popup {
@@ -1036,15 +1247,16 @@ export default {
   transform: translateX(-50%) translateY(100%);
   width: 100%;
   background-color: #ffffff;
-  border-radius: 24rpx 24rpx 0 0;
-  z-index: 999;
-  animation: popupSlideUp 0.3s forwards;
-  max-height: 70vh;
+  border-radius: 32rpx 32rpx 0 0;
+  z-index: 9999;
+  animation: popupSlideUp 0.3s forwards cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-height: 75vh;
   overflow-y: auto;
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.1);
 }
 
 .popup-header {
-  padding: 24rpx;
+  padding: 32rpx 24rpx;
   border-bottom: 1rpx solid #f0f0f0;
   display: flex;
   justify-content: space-between;
@@ -1053,12 +1265,15 @@ export default {
   top: 0;
   background-color: #ffffff;
   z-index: 1002;
+  backdrop-filter: blur(10rpx);
 }
 
 .popup-title {
-  font-size: 32rpx;
+  font-size: 36rpx;
   font-weight: bold;
   color: #333333;
+  flex: 1;
+  text-align: center;
 }
 
 .popup-close {
@@ -1074,23 +1289,38 @@ export default {
 .popup-actions-header {
   display: flex;
   align-items: center;
+  gap: 16rpx;
 }
 
 .action-icon {
-  margin-right: 20rpx;
-  padding: 10rpx;
-  font-size: 40rpx;
+  margin-right: 0;
+  padding: 12rpx;
+  font-size: 36rpx;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.action-icon:hover {
+  background-color: #f5f5f5;
+  transform: scale(1.1);
 }
 
 .action-text {
-  margin-right: 20rpx;
-  padding: 10rpx;
+  margin-right: 0;
+  padding: 12rpx 24rpx;
   font-size: 28rpx;
   color: #1989fa;
   line-height: 40rpx;
   white-space: nowrap;
   background-color: transparent;
   border: none;
+  border-radius: 24rpx;
+  transition: all 0.2s ease;
+}
+
+.action-text:hover {
+  transform: translateY(-2rpx);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
 }
 
 /* 分享按钮美化：柔和蓝色底、圆角与细边框 */
@@ -1100,7 +1330,10 @@ export default {
   border: 1rpx solid #d0e7ff;
   border-radius: 24rpx;
 }
-.action-text.action-share:active { opacity: 0.92; }
+.action-text.action-share:active { 
+  opacity: 0.92;
+  transform: scale(0.98);
+}
 
 /* 评论按钮美化：柔和暖色底、圆角与细边框 */
 .action-text.action-comment {
@@ -1109,27 +1342,40 @@ export default {
   border: 1rpx solid #ffd8bf;
   border-radius: 24rpx;
 }
-.action-text.action-comment:active { opacity: 0.92; }
+.action-text.action-comment:active { 
+  opacity: 0.92;
+  transform: scale(0.98);
+}
 
 .popup-body {
   padding: 32rpx 24rpx;
 }
 
 .bill-detail-info {
-  padding: 30rpx;
+  padding: 40rpx;
   margin-bottom: 30rpx;
-  background-color: #fafafa;
-  border-radius: 10rpx;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  border-radius: 16rpx;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+  border: 1rpx solid #f0f0f0;
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20rpx 0;
-  border-bottom: 1rpx solid #eeeeee;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+  transition: all 0.2s ease;
+}
+
+.detail-row:hover {
+  background-color: rgba(0, 0, 0, 0.01);
+  padding-left: 12rpx;
+  padding-right: 12rpx;
+  border-radius: 8rpx;
 }
 
 .detail-row:last-child {
@@ -1139,6 +1385,7 @@ export default {
 .detail-label {
   font-size: 28rpx;
   color: #666666;
+  font-weight: 500;
 }
 
 .detail-value {
@@ -1147,6 +1394,15 @@ export default {
   text-align: right;
   display: flex;
   align-items: center;
+  font-weight: 500;
+  word-break: break-all;
+  max-width: 60%;
+}
+
+.detail-amount {
+  font-size: 36rpx;
+  font-weight: bold;
+  letter-spacing: 1rpx;
 }
 
 .income {
@@ -1166,16 +1422,7 @@ export default {
 
 
 
-/* 账单ID样式 */
-.bill-id {
-  position: absolute;
-  top: 10rpx;
-  left: 10rpx;
-  font-size: 24rpx;
-  color: #007AFF;
-  font-weight: normal;
-  z-index: 1;
- }
+
  .bill-tag {
    font-size: 20rpx;
    padding: 4rpx 10rpx;

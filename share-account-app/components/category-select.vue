@@ -8,30 +8,25 @@
 
     <!-- 顶部分类分段器（保持原样式与结构） -->
     <view class="segmented-container" v-else-if="topLevelCategories.length > 0">
-      <uni-segmented-control 
-        :values="topLevelCategories.map(cat => cat.name)" 
-        :current="currentTopCategoryIndex" 
-        @clickItem="onSegmentedClickItem" 
-        :inActiveColor="'#fff'"
-        styleType="button"
-        :style="{
-          fontSize: '28rpx',
-          height: '72rpx',
-          borderRadius: '36rpx',
-          border: 'none',
-          width: 'auto',
-          minWidth: '60%'
-        }"
-      ></uni-segmented-control>
+      <view class="segmented-control">
+        <view 
+          v-for="(category, index) in topLevelCategories" 
+          :key="category.id"
+          :class="['segmented-item', { 'active': currentTopCategoryIndex === index }]"
+          @tap="onSegmentedClickItem({ currentIndex: index })"
+        >
+          {{ category.name }}
+        </view>
+      </view>
       <!-- 左侧：不选分类；右侧：编辑按钮 -->
       <view class="settings-icon-container" style="display:flex; align-items:center; gap: 10rpx;">
         <text class="clear-category-text" @tap="clearCategorySelection" :style="{ color: categoryIconColor }">不选分类</text>
         <custom-icon 
           type="bianji" 
           :size="23"
-          :color="categoryIconColor" 
+          color="#ff4d4f" 
           @click="navigateToClassSettings"
-          style="padding: 10rpx;" 
+          style="padding: 10rpx; border-radius: 50%; background-color: #fff2f0;" 
         ></custom-icon>
       </view>
     </view>
@@ -48,18 +43,19 @@
           <view class="category-item-container">
             <view 
               :class="['category-card', { 'selected': isCategorySelected(subCategory) }]"
+              :style="{ animationDelay: (index * 0.05) + 's' }"
               @tap="selectSubCategory(subCategory)"
             >
               <view class="card-content">
-                <view class="category-icon">
+                <view class="category-icon" :style="{ backgroundColor: getRandomBgColor(subCategory.id) }">
                   <template v-if="hasFontIcon(subCategory.icon)">
-                    <custom-icon :type="normalizeIcon(subCategory.icon)" :size="30" :color="categoryIconColor"></custom-icon>
+                    <custom-icon :type="normalizeIcon(subCategory.icon)" :size="21" color="#ffffff"></custom-icon>
                   </template>
                   <template v-else>
-                    <text class="first-char-icon" :style="{ color: categoryIconColor }">{{ firstChar(subCategory.name) }}</text>
+                    <text class="first-char-icon" style="color: #ffffff">{{ firstChar(subCategory.name) }}</text>
                   </template>
                 </view>
-                <text class="category-name">{{ subCategory.name }}</text>
+                <text class="category-name">{{ subCategory.name }}<text v-if="subCategory.childClassList && subCategory.childClassList.length > 0"></text></text>
               </view>
             </view>
             <!-- 三个点按钮，只有当有子分类时显示 -->
@@ -93,21 +89,14 @@
           <div v-if="currentSubSubCategories && currentSubSubCategories.length > 0">
             <view class="sub-sub-category-list">
               <view 
-                  v-for="subSubCategory in currentSubSubCategories" 
+                  v-for="(subSubCategory, index) in currentSubSubCategories" 
                   :key="subSubCategory.idStr"
                   class="sub-sub-category-item"
                   :class="{ 'selected': isCategorySelected(subSubCategory) }"
+                  :style="{ animationDelay: (index * 0.05) + 's' }"
                   @tap="selectSubSubCategory(subSubCategory)"
                 >
-                <view class="sub-sub-category-icon">
-                  <template v-if="hasFontIcon(subSubCategory.icon)">
-                    <custom-icon :type="normalizeIcon(subSubCategory.icon)" :size="30" :color="categoryIconColor"></custom-icon>
-                  </template>
-                  <template v-else>
-                    <text class="first-char-icon" :style="{ color: categoryIconColor }">{{ firstChar(subSubCategory.name) }}</text>
-                  </template>
-                </view>
-                <text class="sub-sub-category-name">{{ subSubCategory.name }}</text>
+                <text class="sub-sub-category-tag">{{ subSubCategory.name }}</text>
               </view>
             </view>
           </div>
@@ -467,6 +456,18 @@ export default {
       );
     },
     
+    // 生成随机鲜艳背景色
+    getRandomBgColor(id) {
+      // 使用id作为种子，确保相同id的图标背景色一致
+      const colors = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+        '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+        '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA'
+      ];
+      const index = Math.abs(parseInt(id)) % colors.length;
+      return colors[index];
+    },
+    
     // 找到并切换到包含指定分类的顶级分类
     findAndSwitchTopCategory(category) {
       console.log('开始查找并切换到顶级分类，目标分类:', category.name);
@@ -530,15 +531,88 @@ export default {
   align-items: center;
   padding: 20rpx 0rpx;
   background-color: #fff;
-  margin-bottom: 20rpx;
 }
 
+/* 分段器样式 */
+.segmented-control {
+  display: flex;
+  background-color: #f5f5f5;
+  border-radius: 36rpx;
+  padding: 4rpx;
+  align-items: center;
+}
+
+/* 分段器项样式 */
+.segmented-item {
+  padding: 12rpx 32rpx;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+  color: #333;
+  background-color: transparent;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  flex: 1;
+  text-align: center;
+}
+
+/* 分段器项选中状态 */
+.segmented-item.active {
+  background-color: #d744e0;
+  color: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(147, 51, 234, 0.3);
+}
+
+/* 分段器项悬浮效果 */
+.segmented-item:hover {
+  opacity: 0.8;
+}
+
+.segmented-item.active:hover {
+  box-shadow: 0 6rpx 20rpx rgba(147, 51, 234, 0.4);
+  opacity: 1;
+}
+
+/* 冒泡动画效果 */
+@keyframes bubble {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 图标旋转动画 */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sub-sub-category-item {
+  animation: bubble 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  opacity: 0;
+}
 /* 设置图标容器 + 清空文字 */
 .settings-icon-container {
   padding: 10rpx;
 }
 .clear-category-text {
   font-size: 28rpx;
+  color: #666666;
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  transition: all 0.3s ease;
+}
+
+.clear-category-text:hover {
+  background-color: #f5f5f5;
+  color: #333333;
 }
 
 /* 表单样式 */
@@ -551,10 +625,8 @@ export default {
   max-height: 80vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 20rpx;
   /* 确保内容少时容器能自动缩小 */
   min-height: 1px;
-  margin-bottom: 100px;
 }
 
 /* 隐藏滚动条但保留滚动功能 */
@@ -571,34 +643,51 @@ export default {
   box-sizing: border-box;
   /* 确保grid内容完整显示 */
   min-height: 100%;
+  gap: 24rpx;
+}
+
+/* 调整网格项的间距 */
+.sub-category-grid >>> .uni-grid-item {
+  margin-bottom: 24rpx;
 }
 .sub-category-grid-item { padding: 0; }
 
 .category-item-container {
       position: relative;
       width: 100%;
-      height: 160rpx;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     
     .category-card {
-      height: 160rpx;
+      height: 110rpx;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
       width: 100%;
       min-width: 0;
+      border-radius: 16rpx;
+      padding: 16rpx;
+      animation: bubble 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      opacity: 0;
     }
+
+.category-card:hover {
+  transform: translateY(-4rpx);
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+}
+
 .category-card:active {
   background-color: #f5f5f5;
-  border-radius: 16rpx;
+  transform: translateY(0);
 }
+
 .category-card.selected {
   background-color: #f0e8fd;
-  border-radius: 16rpx;
+  border: 1rpx solid #9333ea;
+  box-shadow: 0 4rpx 16rpx rgba(147, 51, 234, 0.2);
 }
 
 .card-content {
@@ -609,9 +698,38 @@ export default {
   text-align: center;
   padding: 10rpx;
 }
-.category-icon { font-size: 48rpx; margin-bottom: 10rpx; }
-.first-char-icon { width: 25px; height: 25px; line-height: 25px; text-align: center; display: inline-block; font-weight: bold; }
-.category-name { font-size: 24rpx; color: #333; max-width: 120rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.category-icon { 
+  width: 60rpx; 
+  height: 60rpx; 
+  border-radius: 50%; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  margin-bottom: 10rpx; 
+  border: 2rpx solid rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.category-icon:hover {
+  transform: scale(1.1);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.category-icon:hover custom-icon,
+.category-icon:hover .first-char-icon {
+  animation: rotate 1s ease-in-out forwards;
+}
+
+.first-char-icon { 
+  width: 60rpx; 
+  height: 60rpx; 
+  line-height: 60rpx; 
+  text-align: center; 
+  display: inline-block; 
+  font-weight: bold; 
+  font-size: 36rpx;
+}
+.category-name { font-size: 22rpx; color: #333; max-width: 140rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     
 /* 更多选项按钮样式 */
 .more-options-btn {
@@ -674,10 +792,46 @@ export default {
 .popup-title { font-size: 34rpx; font-weight: bold; color: #333; }
 .popup-content { max-height: 500rpx; overflow-y: auto; padding: 30rpx 40rpx; }
 
-.sub-sub-category-list { padding: 20rpx; margin-bottom: 100px;}
-.sub-sub-category-item { display: flex; align-items: center; padding: 20rpx; border-radius: 8rpx; margin-bottom: 10rpx; }
-.sub-sub-category-item:active { background-color: #f5f5f5; }
-.sub-sub-category-item.selected { background-color: #f0e8fd; border-radius: 8rpx; }
-.sub-sub-category-icon { font-size: 40rpx; margin-right: 20rpx; color: var(--theme-primary-color, #faad14); }
-.sub-sub-category-name { font-size: 32rpx; color: #333; }
+.sub-sub-category-list { 
+  padding: 20rpx; 
+  margin-bottom: 100px; 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 24rpx;
+}
+
+.sub-sub-category-item { 
+  padding: 0; 
+  border-radius: 0; 
+  margin-bottom: 16rpx;
+  width: calc(25% - 12rpx);
+  box-sizing: border-box;
+}
+
+/* 确保每行显示4个元素 */
+.sub-sub-category-tag {
+  padding: 16rpx 12rpx;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+  color: #333;
+  background-color: #f5f5f5;
+  transition: all 0.3s ease;
+  border: 2rpx solid transparent;
+  display: block;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sub-sub-category-tag:hover {
+  background-color: #e8e8e8;
+  transform: translateY(-2rpx);
+}
+
+.sub-sub-category-item.selected .sub-sub-category-tag {
+  background-color: #9333ea;
+  color: #ffffff;
+  border-color: #9333ea;
+  box-shadow: 0 4rpx 16rpx rgba(147, 51, 234, 0.3);
+}
 </style>

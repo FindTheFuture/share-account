@@ -30,9 +30,6 @@
     <!-- 登录按钮 -->
     <button class="login-btn" @click="onLogin" :disabled="isDisabled">{{ loginButtonText }}</button>
 
-    <!-- 游客体验按钮 -->
-    <button class="guest-btn" @click="guestLogin" :disabled="isDisabled">游客体验</button>
-
     <!-- 环境提示 -->
     <view class="env-tip" v-if="showEnvTip">
       <text class="env-tip-text">{{ envTipMessage }}</text>
@@ -128,10 +125,11 @@ export default {
                 if (data.code == 200 && data.data.token && data.data.refresh_token) {
                   // 登录成功处理
                   const { token, refresh_token, expires_in, additionalId, thunder, canSendMessage, isNewUser } = data.data;
-                  this.saveToken(token, refresh_token, expires_in, additionalId, thunder, canSendMessage, isNewUser);
-                  // 正式登录：清除游客引导状态
+                  // 清空缓存，确保新登录用户使用最新缓存
+                  this.clearCache();
+                  // 保存登录状态，设置 isGuest 为 false
                   uni.setStorageSync('isGuest', false);
-                  uni.removeStorageSync('guideCard');
+                  this.saveToken(token, refresh_token, expires_in, additionalId, thunder, canSendMessage, isNewUser);
 
                   this.checkLoginStatus().then(isLoggedIn => {
                     if (isLoggedIn) {
@@ -216,83 +214,7 @@ export default {
       });
     },
 
-    // 游客登录
-    guestLogin() {
-      if (!this.agreed) {
-        uni.showToast({
-          title: '请先阅读并勾选协议内容',
-          icon: 'none',
-          duration: 3000
-        });
-        return;
-      }
 
-      this.isDisabled = true;
-      uni.showLoading({ title: '登录中...' });
-
-      uni.request({
-        url: `${this.$backUrlConfig.baseUrl}${this.$backUrlConfig.endpoints.login_guest}`,
-        method: 'POST',
-        success: (response) => {
-          console.log('游客登录响应:', response);
-          const data = response.data;
-
-          if (data.code == 200 && data.data && data.data.token && data.data.refresh_token) {
-            const { token, refresh_token, expires_in, additionalId, thunder, canSendMessage, isNewUser, guideCard } = data.data;
-            this.saveToken(token, refresh_token, expires_in, additionalId, thunder, canSendMessage, isNewUser);
-            // 游客登录：存储引导卡片和游客标记
-            if (guideCard) {
-              try { uni.setStorageSync('guideCard', JSON.stringify(guideCard)); } catch (e) { uni.setStorageSync('guideCard', guideCard); }
-            }
-            uni.setStorageSync('isGuest', true);
-            
-            this.checkLoginStatus().then(isLoggedIn => {
-              if (isLoggedIn) {
-                uni.hideLoading();
-                uni.showToast({
-                  title: '登录成功',
-                  icon: 'success',
-                  duration: 2000
-                });
-
-                setTimeout(() => {
-                  this.redirectToReturnPage();
-                }, 500);
-              } else {
-                throw new Error('Token验证失败');
-              }
-            }).catch(error => {
-              console.error('游客登录后验证失败:', error);
-              uni.hideLoading();
-              this.handleLoginFailure(60);
-            });
-          } else {
-            console.error('游客登录接口返回错误:', data);
-            uni.hideLoading();
-            this.handleLoginFailure(data.failTime || 60);
-          }
-        },
-        fail: (err) => {
-          console.error('请求游客登录接口失败:', err);
-          uni.hideLoading();
-          
-          let errorMsg = '请求游客登录接口失败';
-          if (err.errMsg) {
-            errorMsg += ': ' + err.errMsg;
-          }
-          
-          uni.showModal({
-            title: '登录失败',
-            content: errorMsg,
-            showCancel: false
-          });
-          this.handleLoginFailure(60);
-        },
-        complete: () => {
-          this.isDisabled = false;
-        }
-      });
-    },
 
 
 
@@ -338,6 +260,21 @@ export default {
       app.globalData.canSendMessage = canSendMessage;
     },
 
+
+    // 清空缓存
+    clearCache() {
+      // 清空缓存
+      uni.removeStorageSync('token');
+      uni.removeStorageSync('refreshToken');
+      uni.removeStorageSync('additionalId');
+      uni.removeStorageSync('expireAt');
+      uni.removeStorageSync('thunder');
+      uni.removeStorageSync('canSendMessage');
+      uni.removeStorageSync('isGuest');
+      uni.removeStorageSync('guideCard');
+    },
+
+    // 跳转首页
     goHomeList() {
       uni.switchTab({
         url: '/pages/firstpage/firstpage' // 改为首页地址

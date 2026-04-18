@@ -23,7 +23,7 @@
         {
             "path": "pages/firstpage/firstpage",
             "style": {
-                "navigationBarTitleText": "一起记账吧",
+                "navigationBarTitleText": "叫TA一起记账",
                 "enablePullDownRefresh": true
             }
         },            

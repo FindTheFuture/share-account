@@ -214,143 +214,113 @@ public class LoginServiceImpl implements LoginService {
             }
         }
 
-        String guestOpenid = "guest_" + java.util.UUID.randomUUID().toString();
+        //String guestOpenid = "guest_" + java.util.UUID.randomUUID().toString();
+        String guestOpenid = "guest_1";
         log.info("开始游客登录，openid={}", guestOpenid);
 
-        // 创建游客用户
-        User user = new User();
-        String testNamePrefix = baseHandler.getTestUserName();
-        if (testNamePrefix == null || testNamePrefix.isEmpty()) {
-            testNamePrefix = "游客";
-        }
-        user.setNickName(testNamePrefix)
-            .setOpenid(guestOpenid)
-            .setCreateTime(java.time.LocalDateTime.now())
-            .setLastLoginTime(java.time.LocalDateTime.now())
-            .setSex(SexEnum.DEFAULT.getId())
-            .setRole(RoleTypeEnum.USER.getId())
-            .setValidIntegral(0)
-            .setCanSendMessage(CanSendMessageEnum.NO.getId())
-            .setNotityBill(1);
-
-        boolean saveUserSuccess = userMapper.insert(user) > 0;
-        if (!saveUserSuccess) {
-            log.error("创建游客用户失败 openid={}", guestOpenid);
-            throw new RuntimeException("游客登录失败");
-        }
-        log.info("创建游客用户id: {}", user.getId());
-
-        // 初始化默认账本与账户
-        try {
-            baseHandler.initializeTasksForUser(user.getId());
-        } catch (Exception initEx) {
-            log.warn("初始化游客默认账本/账户失败: {}", initEx.getMessage());
-        }
-
-        // 发送系统消息提醒游客模式限制与有效期
-        try {
-            // 复用单条系统消息：若存在标题为“游客模式提示”的系统消息，则只为当前用户创建关联；否则创建一次消息
-            java.util.List<cn.lizongyi.shareaccount.entity.Message> sysMsgs = messageMapper.selectByType(1, 50);
-            Long msgId = null;
-            if (sysMsgs != null) {
-                for (cn.lizongyi.shareaccount.entity.Message m : sysMsgs) {
-                    if ("游客模式提示".equals(m.getTitle())) { msgId = m.getId(); break; }
-                }
+        // 先检查游客用户是否已经存在
+        User user = userMapper.findByOpenid(guestOpenid);
+        if (user == null) {
+            user = new User();
+            String testNamePrefix = baseHandler.getTestUserName();
+            if (testNamePrefix == null || testNamePrefix.isEmpty()) {
+                testNamePrefix = "游客";
             }
-            if (msgId == null) {
-                cn.lizongyi.shareaccount.entity.Message message = new cn.lizongyi.shareaccount.entity.Message();
-                message.setTitle("游客模式提示");
-                message.setContent("您正在使用游客模式：账号有效期为1天，期满后请使用微信登录以保留数据。");
-                message.setType(1);
-                message.setPriority(1);
-                message.setStatus(0);
-                message.setCreatedAt(new java.util.Date());
-                message.setUpdatedAt(new java.util.Date());
-                messageMapper.insert(message);
-                msgId = message.getId();
-            }
-            cn.lizongyi.shareaccount.entity.UserMessage exists = userMessageMapper.selectByUserIdAndMessageId(user.getId(), msgId);
-            if (exists == null) {
-                cn.lizongyi.shareaccount.entity.UserMessage userMessage = new cn.lizongyi.shareaccount.entity.UserMessage();
-                userMessage.setMessageId(msgId);
-                userMessage.setUserId(user.getId());
-                userMessage.setIsRead(0);
-                userMessage.setCreatedAt(new java.util.Date());
-                userMessageMapper.insert(userMessage);
-            }
-        } catch (Exception ex) {
-            log.warn("发送游客提示消息失败: {}", ex.getMessage());
-        }
+            user.setNickName(testNamePrefix)
+                .setOpenid(guestOpenid)
+                .setCreateTime(java.time.LocalDateTime.now())
+                .setLastLoginTime(java.time.LocalDateTime.now())
+                .setSex(SexEnum.DEFAULT.getId())
+                .setRole(RoleTypeEnum.USER.getId())
+                .setValidIntegral(0)
+                .setCanSendMessage(CanSendMessageEnum.NO.getId())
+                .setNotityBill(1);
 
-        // 首次游客登录：可选注入“示例账单”
-        try {
-            String sampleBillEnabled = baseHandler.getCongigValue(null, Constants.GUEST_SAMPLE_BILL_ENABLED);
-            boolean shouldInjectSample = (sampleBillEnabled == null) ||
-                    "true".equalsIgnoreCase(sampleBillEnabled) ||
-                    "1".equals(sampleBillEnabled);
-            if (shouldInjectSample) {
-                // 找到默认账本
-                java.util.List<cn.lizongyi.shareaccount.entity.Ledger> ledgers = ledgerMapper.findByUserId(user.getId());
-                cn.lizongyi.shareaccount.entity.Ledger defaultLedger = null;
-                if (ledgers != null && !ledgers.isEmpty()) {
-                    for (cn.lizongyi.shareaccount.entity.Ledger l : ledgers) {
-                        if (l.getIsDefault() != null && l.getIsDefault() == 1) {
-                            defaultLedger = l;
-                            break;
+            boolean saveUserSuccess = userMapper.insert(user) > 0;
+            if (!saveUserSuccess) {
+                log.error("创建游客用户失败 openid={}", guestOpenid);
+                throw new RuntimeException("游客登录失败");
+            }
+            // 创建游客用户
+            log.info("创建游客用户id: {}", user.getId());
+
+            // 初始化默认账本与账户
+            try {
+                baseHandler.initializeTasksForUser(user.getId());
+            } catch (Exception initEx) {
+                log.warn("初始化游客默认账本/账户失败: {}", initEx.getMessage());
+            }
+
+            // 首次游客登录：可选注入“示例账单”
+            try {
+                String sampleBillEnabled = baseHandler.getCongigValue(null, Constants.GUEST_SAMPLE_BILL_ENABLED);
+                boolean shouldInjectSample = (sampleBillEnabled == null) ||
+                        "true".equalsIgnoreCase(sampleBillEnabled) ||
+                        "1".equals(sampleBillEnabled);
+                if (shouldInjectSample) {
+                    // 找到默认账本
+                    java.util.List<cn.lizongyi.shareaccount.entity.Ledger> ledgers = ledgerMapper.findByUserId(user.getId());
+                    cn.lizongyi.shareaccount.entity.Ledger defaultLedger = null;
+                    if (ledgers != null && !ledgers.isEmpty()) {
+                        for (cn.lizongyi.shareaccount.entity.Ledger l : ledgers) {
+                            if (l.getIsDefault() != null && l.getIsDefault() == 1) {
+                                defaultLedger = l;
+                                break;
+                            }
+                        }
+                        if (defaultLedger == null) {
+                            defaultLedger = ledgers.get(0);
                         }
                     }
-                    if (defaultLedger == null) {
-                        defaultLedger = ledgers.get(0);
-                    }
-                }
- 
-                 // 找到默认账户
-                java.util.List<cn.lizongyi.shareaccount.entity.Account> accounts = accountMapper.findByUserId(user.getId());
-                cn.lizongyi.shareaccount.entity.Account defaultAccount = null;
-                if (accounts != null && !accounts.isEmpty()) {
-                    for (cn.lizongyi.shareaccount.entity.Account a : accounts) {
-                        if (a.getIsDefault() != null && a.getIsDefault() == 1) {
-                            defaultAccount = a;
-                            break;
+    
+                    // 找到默认账户
+                    java.util.List<cn.lizongyi.shareaccount.entity.Account> accounts = accountMapper.findByUserId(user.getId());
+                    cn.lizongyi.shareaccount.entity.Account defaultAccount = null;
+                    if (accounts != null && !accounts.isEmpty()) {
+                        for (cn.lizongyi.shareaccount.entity.Account a : accounts) {
+                            if (a.getIsDefault() != null && a.getIsDefault() == 1) {
+                                defaultAccount = a;
+                                break;
+                            }
+                        }
+                        if (defaultAccount == null) {
+                            defaultAccount = accounts.get(0);
                         }
                     }
-                    if (defaultAccount == null) {
-                        defaultAccount = accounts.get(0);
+    
+                    // 选择一个系统支出分类（顶层ID=1），优先取其子分类
+                    Long classId = null;
+                    java.util.List<cn.lizongyi.shareaccount.entity.ClassEntity> expenseChildren = classEntityMapper.selectAllMainByParentId(1L);
+                    if (expenseChildren != null && !expenseChildren.isEmpty()) {
+                        classId = expenseChildren.get(0).getId();
                     }
-                }
- 
-                 // 选择一个系统支出分类（顶层ID=1），优先取其子分类
-                Long classId = null;
-                java.util.List<cn.lizongyi.shareaccount.entity.ClassEntity> expenseChildren = classEntityMapper.selectAllMainByParentId(1L);
-                if (expenseChildren != null && !expenseChildren.isEmpty()) {
-                    classId = expenseChildren.get(0).getId();
-                }
 
-                if (defaultLedger != null && defaultAccount != null) {
-                    cn.lizongyi.shareaccount.entity.Bill sample = new cn.lizongyi.shareaccount.entity.Bill();
-                    sample.setUserId(user.getId());
-                    sample.setLedgerId(defaultLedger.getId());
-                    sample.setAccountId(defaultAccount.getId());
-                    sample.setClassId(classId);
-                    sample.setTopClassId(1L); // 顶层支出分类
-                    sample.setIsBudget(0);
-                    sample.setBillTime(java.time.LocalDateTime.now());
-                    sample.setPrice(-5000L); // -50.00 作为示例支出
-                    sample.setStatus(0);
-                    sample.setMemo("示例账单：xx消费");
-                    sample.setCreateTime(java.time.LocalDateTime.now());
-                    try {
-                        billMapper.insert(sample);
-                        log.info("游客示例账单已注入: userId={}, billId={}", user.getId(), sample.getId());
-                    } catch (Exception insertEx) {
-                        log.warn("注入示例账单失败: {}", insertEx.getMessage());
+                    if (defaultLedger != null && defaultAccount != null) {
+                        cn.lizongyi.shareaccount.entity.Bill sample = new cn.lizongyi.shareaccount.entity.Bill();
+                        sample.setUserId(user.getId());
+                        sample.setLedgerId(defaultLedger.getId());
+                        sample.setAccountId(defaultAccount.getId());
+                        sample.setClassId(classId);
+                        sample.setTopClassId(1L); // 顶层支出分类
+                        sample.setIsBudget(0);
+                        sample.setBillTime(java.time.LocalDateTime.now());
+                        sample.setPrice(-5000L); // -50.00 作为示例支出
+                        sample.setStatus(0);
+                        sample.setMemo("示例账单：xx消费");
+                        sample.setCreateTime(java.time.LocalDateTime.now());
+                        try {
+                            billMapper.insert(sample);
+                            log.info("游客示例账单已注入: userId={}, billId={}", user.getId(), sample.getId());
+                        } catch (Exception insertEx) {
+                            log.warn("注入示例账单失败: {}", insertEx.getMessage());
+                        }
+                    } else {
+                        log.warn("未找到默认账本或账户，跳过示例账单注入");
                     }
-                } else {
-                    log.warn("未找到默认账本或账户，跳过示例账单注入");
                 }
+            } catch (Exception e) {
+                log.warn("处理游客示例账单逻辑时异常: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("处理游客示例账单逻辑时异常: {}", e.getMessage());
         }
 
         // 生成 JWT token 和刷新 token
@@ -367,10 +337,10 @@ public class LoginServiceImpl implements LoginService {
         // 引导卡片：前端可根据此字段渲染游客模式引导
         Map<String, Object> guideCard = new HashMap<>();
         guideCard.put("title", "游客快速引导");
-        guideCard.put("content", "这是临时体验账号，数据保留1天；绑定微信可保留数据并开启通知。示例账单已创建，去看看吧。");
-        guideCard.put("ctaText", "绑定微信");
-        guideCard.put("ctaAction", "/login/upgrade");
-        guideCard.put("expiresHours", 24);
+        guideCard.put("content", "您正在使用游客模式，无法保存账单；请使用微信登录以保留账单数据。");
+        //guideCard.put("ctaText", "绑定微信");
+        //guideCard.put("ctaAction", "/login/upgrade");
+        //guideCard.put("expiresHours", 24);
         response.put("guideCard", guideCard);
         return response;
     }

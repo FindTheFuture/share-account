@@ -3,25 +3,32 @@
     <!-- 搜索区域 -->
     <view class="search-container">
       <view class="search-group flex items-center">
-        <uni-easyinput
-          prefixIcon="search"
-          v-model="searchPhone"
-          placeholder="请输入手机号"
-          type="digit"
-          maxlength="11"
+        <!-- 自定义输入框 -->
+        <view class="custom-input flex items-center" :class="{ 'input-focused': isInputFocused }">
+          <view class="input-icon">
+            <uni-icons type="search" size="32" color="#999999"></uni-icons>
+          </view>
+          <input
+            v-model="searchPhone"
+            placeholder="请输入手机号"
+            type="number"
+            maxlength="11"
+            :disabled="loading"
+            @input="handleInput"
+            @focus="handleInputFocus"
+            @blur="handleInputBlur"
+            class="input-field"
+          />
+        </view>
+        <!-- 自定义查询按钮 -->
+        <view 
+          :class="{ 'loading': loading }"
           :disabled="loading"
-          @input="handleInput"
-          class="flex-1 mr-2 search-input"
-        ></uni-easyinput>
-        <button
-          :loading="loading"
-          :disabled="loading"
-          type="primary"
           @click="onSearch"
-          class="search-button"
+          class="custom-button"
         >
-          查询
-        </button>
+          <text class="button-text">查询</text>
+        </view>
       </view>
     </view>
     
@@ -33,23 +40,43 @@
     <!-- 列表区域 -->
     <view class="list-container" v-if="!initialLoading && userList.length > 0">
       <view class="user-item" v-for="(user, index) in userList" :key="index" @click="navigateToDetail(user.haoe)">
-        <view class="user-info-top flex justify-between items-center mb-4">
-          <view class="user-hao text-gray-500 text-sm">#{{ user.haoe }}</view>
-          <view class="user-phone font-medium text-base">{{ user.phone }}</view>
-          <view class="user-role-tag" :class="getRoleClass(user.roleName)">
-            {{ user.roleName }}
+          <view class="user-info-top flex justify-between items-center">
+            <view class="user-hao">#{{ user.haoe }}</view>
+            <view class="user-role-tag" :class="getRoleClass(user.roleName)">
+              {{ user.roleName }}
+            </view>
           </view>
-        </view>
-        <view class="user-info-bottom flex justify-between items-center">
-          <view class="user-integral text-danger text-base">积分: {{ user.validIntegral }}</view>
-        </view>
+          <view class="user-info-middle">
+            <view class="user-integral-row">
+              <view class="user-integral">积分: {{ user.validIntegral }}</view>
+              <view class="user-bill-count">账单数量: {{ user.billCount || 0 }}</view>
+            </view>
+          </view>
+          <view class="user-info-details">
+            <view class="info-row">
+              <text class="info-label">昵称:</text>
+              <text class="info-value">{{ user.nickName }}{{ user.isGuest ? ' (游客)' : '' }}</text>
+            </view>
+            <view class="info-row">
+              <text class="info-label">手机号:</text>
+              <text class="info-value">{{ user.phone || '未设置' }}</text>
+            </view>
+            <view class="info-row">
+              <text class="info-label">上次登录:</text>
+              <text class="info-value">{{ user.lastLoginTime || '未登录' }}</text>
+            </view>
+            <view class="info-row">
+              <text class="info-label">创建时间:</text>
+              <text class="info-value">{{ user.createTime || '未知' }}</text>
+            </view>
+          </view>
         
         <!-- 操作按钮 -->
-        <view class="user-actions flex justify-end mt-4">
+        <view class="user-actions flex justify-between">
           <button type="default" size="mini" class="mini-btn mini-btn-warning" @click.stop="showRolePicker(user)">
             设置角色
           </button>
-          <button type="default" size="mini" class="mini-btn ml-2" @click.stop="navigateToEdit(user.haoe)">
+          <button type="default" size="mini" class="mini-btn mini-btn-edit" @click.stop="navigateToEdit(user.haoe)">
             编辑
           </button>
         </view>
@@ -83,7 +110,12 @@
 </template>
 
 <script>
+import UniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+
 export default {
+  components: {
+    UniIcons
+  },
   data() {
     return {
       searchPhone: '',
@@ -94,6 +126,7 @@ export default {
       pageSize: 10,
       loading: false,
       initialLoading: true,
+      isInputFocused: false,
       enumData: {} // 存储枚举值数据
     }
   },
@@ -281,63 +314,160 @@ export default {
         default:
           return 'role-other';
       }
+    },
+    
+    // 处理输入框聚焦
+    handleInputFocus() {
+      this.isInputFocused = true;
+    },
+    
+    // 处理输入框失焦
+    handleInputBlur() {
+      this.isInputFocused = false;
     }
   }
 }
 </script>
 
 <style lang="scss">
-/* 使用uni-ui组件，减少自定义样式 */
+/* 设计稿样式实现 */
 
 .user-list-page {
   background-color: #f8f8f8;
   min-height: 100vh;
-  padding-bottom: 30rpx;
-}
-
-.search-container {
   padding: 20rpx;
 }
 
+.search-container {
+  margin-bottom: 20rpx;
+}
+
 .search-group {
-  display: flex;
-  align-items: center;
-  background-color: #ffffff;
-  border-radius: 12rpx;
-  padding: 10rpx 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 24rpx;
+      width: 100%;
+      
+      .custom-input {
+        flex: 1;
+        height: 96rpx;
+        padding: 0 36rpx;
+        background: linear-gradient(145deg, #F5F0FF, #E8DFFF);
+        border-radius: 24rpx;
+        border: 2rpx solid #E0D6FF;
+        box-shadow: 0 4rpx 12rpx rgba(146, 110, 255, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        min-width: 0;
+        
+        &:hover {
+          border-color: #C9B8FF;
+          box-shadow: 0 6rpx 16rpx rgba(146, 110, 255, 0.15);
+        }
+        
+        &.input-focused {
+          border-color: #926EFF;
+          box-shadow: 0 0 0 12rpx rgba(146, 110, 255, 0.15), 0 6rpx 20rpx rgba(146, 110, 255, 0.2);
+          transform: translateY(-2rpx);
+        }
+        
+        .input-icon {
+          margin-right: 24rpx;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          flex-shrink: 0;
+          width: 32rpx;
+          height: 32rpx;
+          
+          uni-icons {
+            color: #926EFF;
+            transition: all 0.3s ease;
+          }
+        }
+        
+        .input-field {
+          flex: 1;
+          height: 100%;
+          border: none;
+          font-size: 34rpx;
+          color: #333333;
+          background-color: transparent;
+          font-weight: 500;
+          width: 100%;
+          min-width: 0;
+          
+          &::placeholder {
+            color: #A890FF;
+            font-weight: 400;
+          }
+          
+          &:focus {
+            outline: none;
+          }
+        }
+      }
   
-  .search-input {
-    flex: 1;
-    margin-right: 10rpx;
-    height: 68rpx;
-    border: none;
-    padding: 0 10rpx;
-    font-size: 28rpx;
-    color: #333333;
-    
-    &:focus {
-      background-color: #ffffff;
-    }
-  }
+
   
-  .search-button {
-    min-width: 160rpx;
-    height: 68rpx;
-    border-radius: 12rpx;
-    font-size: 28rpx;
-    font-weight: 500;
+  .custom-button {
+    width: 180rpx;
+    height: 96rpx;
+    border-radius: 24rpx;
+    font-size: 34rpx;
+    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
     white-space: nowrap;
-    background-color: #1989fa;
-    color: #1989fa;
+    background: linear-gradient(145deg, #409EFF, #3385FF);
+    color: #ffffff;
     border: none;
-    transition: all 0.3s;
+    box-shadow: 0 6rpx 16rpx rgba(64, 158, 255, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.6s ease;
+    }
+    
+    &:hover {
+      transform: translateY(-2rpx);
+      box-shadow: 0 8rpx 20rpx rgba(64, 158, 255, 0.4);
+      background: linear-gradient(145deg, #3385FF, #409EFF);
+    }
+    
+    &:hover::before {
+      left: 100%;
+    }
+    
+    &.loading {
+      opacity: 0.8;
+      transform: scale(0.98);
+    }
     
     &:active {
-      background-color: #40a9ff;
+      transform: translateY(0);
+      box-shadow: 0 4rpx 12rpx rgba(64, 158, 255, 0.3);
+      background: linear-gradient(145deg, #3385FF, #2979FF);
+    }
+    
+    .button-text {
+      color: #ffffff;
+      position: relative;
+      z-index: 1;
     }
   }
 }
@@ -353,7 +483,7 @@ export default {
   background-color: #ffffff;
   border-radius: 12rpx;
   padding: 30rpx;
-  margin: 0 20rpx 20rpx;
+  margin-bottom: 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
   cursor: pointer;
   transition: all 0.3s;
@@ -368,67 +498,97 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16rpx;
+  margin-bottom: 20rpx;
 }
 
 .user-hao {
-  color: #999999;
-  font-size: 24rpx;
+  color: #666666;
+  font-size: 28rpx;
+  font-weight: 500;
 }
 
-.user-phone {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333333;
+.user-info-middle {
+  margin-bottom: 20rpx;
 }
 
-.user-role-tag {
-  padding: 4rpx 16rpx;
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  
-  &.role-admin {
-    background-color: #e6f7ff;
-    color: #1989fa;
-  }
-  
-  &.role-user {
-    background-color: #f6ffed;
-    color: #52c41a;
-  }
-  
-  &.role-other {
-    background-color: #fff7e6;
-    color: #fa8c16;
-  }
-}
-
-.user-info-bottom {
+.user-integral-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .user-integral {
-  color: #ff7e00;
+  color: #FF7E00;
   font-size: 28rpx;
   font-weight: 500;
 }
 
+.user-bill-count {
+  color: #409EFF;
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.user-info-details {
+  margin-bottom: 24rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+  font-size: 26rpx;
+}
+
+.info-label {
+  width: 140rpx;
+  color: #666666;
+  font-weight: 500;
+}
+
+.info-value {
+  flex: 1;
+  color: #333333;
+  word-break: break-word;
+}
+
+.user-role-tag {
+    padding: 6rpx 20rpx;
+    border-radius: 20rpx;
+    font-size: 24rpx;
+    font-weight: 500;
+    
+    &.role-admin {
+      background-color: #E6F7EF;
+      color: #409EFF;
+    }
+    
+    &.role-user {
+      background-color: #E6F7EF;
+      color: #52C41A;
+    }
+    
+    &.role-other {
+      background-color: #E6F7EF;
+      color: #52C41A;
+    }
+  }
+
 .user-actions {
   display: flex;
-  justify-content: flex-end;
-  width: 100%;
-  margin-top: 16rpx;
+  justify-content: space-between;
   
   .mini-btn {
-    min-width: 120rpx;
-    padding: 0 16rpx;
-    line-height: 56rpx;
-    font-size: 26rpx;
-    border-radius: 16rpx;
+    flex: 1;
+    min-width: 180rpx;
+    padding: 0 20rpx;
+    line-height: 72rpx;
+    font-size: 28rpx;
+    font-weight: 500;
+    border-radius: 28rpx;
     transition: all 0.3s;
-    border: 1rpx solid;
     
     &:active {
       transform: scale(0.95);
@@ -437,17 +597,23 @@ export default {
   
   .mini-btn-warning {
     color: #ffffff;
-    background-color: #fa8c16;
-    border-color: #fa8c16;
+    background-color: #FF7E00;
+    border-color: #FF7E00;
+    margin-right: 20rpx;
     
     &:active {
-      background-color: #ffad33;
+      background-color: #FF9E33;
     }
   }
   
-  .ml-2 {
-    margin-left: 10rpx;
-    color: #1989fa;
+  .mini-btn-edit {
+    color: #409EFF;
+    background-color: #ffffff;
+    border: 5rpx solid #409EFF;
+    
+    &:active {
+      background-color: #F0F8FF;
+    }
   }
 }
 
@@ -458,7 +624,7 @@ export default {
 }
 
 .pagination-container {
-  padding: 20rpx;
+  margin-top: 20rpx;
   
   .btn-view {
     text-align: center;

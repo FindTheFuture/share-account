@@ -2,44 +2,53 @@
   <view class="bill-list-page">
     <!-- 顶部功能栏 -->
     <view class="top-toolbar">
-
-      <view class="toolbar-item ledger-tag" :class="{ selected: selectedLedger || (shareMemberBillIds && shareMemberBillIds.length > 0) }" @click.stop="showLedgerPopup">
-        <text>{{ (shareMemberBillIds && shareMemberBillIds.length > 0) ? '共享账单' : (selectedLedger?.name || '账本') }}</text>
+    
+      <!-- 第一行：主要筛选标签 -->
+      <view class="toolbar-row">
+        <view class="toolbar-item ledger-tag" :class="{ selected: selectedLedger || (shareMemberBillIds && shareMemberBillIds.length > 0) }" @click.stop="showLedgerPopup">
+          <text>{{ (shareMemberBillIds && shareMemberBillIds.length > 0) ? '共享账单' : (selectedLedger?.name || '账本') }}</text>
+        </view>
+        
+        <view class="toolbar-item account-tag" :class="{ selected: selectedAccount }" @click.stop="showAccountPopup">
+          <text>{{ selectedAccount?.name || '账户' }}</text>
+        </view>
+        
+        <view class="toolbar-item category-tag" :class="{ selected: selectedCategory }" @click.stop="showCategoryPopup">
+          <text>{{ selectedCategory?.name || '分类' }}</text>
+        </view>
       </view>
-      
-      <view class="toolbar-item account-tag" :class="{ selected: selectedAccount }" @click.stop="showAccountPopup">
-        <text>{{ selectedAccount?.name || '账户' }}</text>
+    
+      <!-- 第二行：次要筛选标签 -->
+      <view class="toolbar-row">
+        <view class="toolbar-item budget-tag" :class="{ selected: selectedBudgetIndex !== 0 }" @click.stop="showBudgetPopup">
+          <text>{{ budgetOptions[selectedBudgetIndex].label }}</text>
+        </view>
+        
+        <view class="toolbar-item date-tag" :class="{ selected: dateRange && dateRange.length > 0 }" @click.stop="showDateRangePicker">
+          <text>{{ dateRangeText || '时间' }}</text>
+        </view>
+        
+        <view class="toolbar-item status-tag" :class="{ selected: selectedStatusIndex > -1 }" @click.stop="showStatusPopup">
+          <text>{{ statusOptions[selectedStatusIndex].label }}</text>
+        </view>
+        
+        <!-- 排序标签 -->
+        <view class="toolbar-item sort-tag" :class="{ selected: selectedSortOption > 0}" @click.stop="showSortPopup">
+          <text>{{ currentSortLabel }}</text>
+        </view>
       </view>
-      
-      <view class="toolbar-item category-tag" :class="{ selected: selectedCategory }" @click.stop="showCategoryPopup">
-        <text>{{ selectedCategory?.name || '分类' }}</text>
-      </view>
-      
-      <view class="toolbar-item budget-tag" :class="{ selected: selectedBudgetIndex !== 0 }" @click.stop="showBudgetPopup">
-        <text>{{ budgetOptions[selectedBudgetIndex].label }}</text>
-      </view>
-      
-      <view class="toolbar-item date-tag" :class="{ selected: dateRange && dateRange.length > 0 }" @click.stop="showDateRangePicker">
-        <text>{{ dateRangeText || '时间' }}</text>
-      </view>
-      
-      <view class="toolbar-item status-tag" :class="{ selected: selectedStatusIndex > -1 }" @click.stop="showStatusPopup">
-        <text>{{ statusOptions[selectedStatusIndex].label }}</text>
-      </view>
-      
-      <!-- 排序标签 -->
-      <view class="toolbar-item sort-tag" :class="{ selected: selectedSortOption > 0}" @click.stop="showSortPopup">
-        <text>{{ currentSortLabel }}</text>
-      </view>
-      
-      <!-- 重置按钮 -->
-      <view class="toolbar-item reset-button next-row" @click.stop="resetAllFilters">
-        <text>重置</text>
-      </view>
-      
-      <!-- 导出按钮 -->
-      <view class="toolbar-item export-button next-row" @click.stop="exportBills">
-        <text>导出</text>
+    
+      <!-- 第三行：操作按钮 -->
+      <view class="toolbar-row">
+        <!-- 重置按钮 -->
+        <view class="toolbar-item reset-button" @click.stop="resetAllFilters">
+          <text>重置</text>
+        </view>
+        
+        <!-- 导出按钮 -->
+        <view class="toolbar-item export-button" @click.stop="exportBills">
+          <text>导出</text>
+        </view>
       </view>
     </view>
 
@@ -304,8 +313,8 @@ export default {
       
       // 日期范围选择
       dateRange: defaultDateRange,
-      
 
+      
       // 状态筛选
       statusOptions: [
         //{ label: '状态', value: -1 },
@@ -344,7 +353,9 @@ export default {
         { id: 4, label: '金额:小->大' }
       ],
       selectedSortOption: 1,
-      sortPopupVisible: false
+      sortPopupVisible: false,
+      // 游客模式标记
+      isGuest: false
     };
   },
   
@@ -360,6 +371,10 @@ export default {
     // 从编辑/新增页面返回时按需刷新账单列表，首屏不重复加载
     this.loading = false;
     this.hasMore = true;
+    // 检查游客模式状态
+    const guestFlag = uni.getStorageSync('isGuest');
+    this.isGuest = guestFlag === true || guestFlag === 'true';
+
     const shouldRefresh = !!uni.getStorageSync('refreshBillListOnShow');
     if (shouldRefresh || this.shouldRefreshOnShow) {
       this.loadBillList();
@@ -431,6 +446,23 @@ export default {
   methods: {
     // 导出账单为PDF
     async exportBills() {
+      // 游客模式验证
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后导出账单',
+          showCancel: false,
+          success: (res) => {
+            if (res.confirm) {
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
+      
       // 检查时间范围是否超过3个月
       const startDate = this.dateRange[0];
       const endDate = this.dateRange[1];
@@ -1413,86 +1445,112 @@ export default {
 /* 顶部功能栏 */
 .top-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   padding: 10rpx;
-  background-color: #fff;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 100;
+  border-bottom: 1rpx solid #e9ecef;
+  max-height: 240rpx;
+  overflow-y: auto;
+}
+
+/* 功能栏行 */
+.toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-bottom: 6rpx;
+}
+
+.toolbar-row:last-child {
+  margin-bottom: 0;
 }
 
 .toolbar-item {
   flex: 1;
-  min-width: 150rpx;
-  padding: 5rpx 0rpx;
-  margin: 5rpx;
-  background-color: #f5f5f5;
-  border-radius: 25rpx;
+  min-width: 120rpx;
+  padding: 8rpx 12rpx;
+  margin: 6rpx;
+  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 28rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28rpx;
-  color: #999; /* 默认灰色文字 */
+  font-size: 24rpx;
+  color: #6c757d;
   position: relative;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
+  border: 1rpx solid #dee2e6;
+}
+
+.toolbar-item:hover {
+  transform: translateY(-2rpx);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 }
 
 .toolbar-item:active {
-  background-color: #e0e0e0;
+  transform: translateY(0);
+  background: linear-gradient(145deg, #e9ecef 0%, #dee2e6 100%);
+  box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
 }
 
-/* 账本标签样式 - 默认灰色 */
+/* 账本标签样式 */
 .toolbar-item.ledger-tag {
-  background-color: #f5f5f5;
-  color: #999;
+  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #6c757d;
 }
 
-/* 账户标签样式 - 默认灰色 */
+/* 账户标签样式 */
 .toolbar-item.account-tag {
-  background-color: #f5f5f5;
-  color: #999;
+  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #6c757d;
 }
 
-/* 分类标签样式 - 默认灰色 */
+/* 分类标签样式 */
 .toolbar-item.category-tag {
-  background-color: #f5f5f5;
-  color: #999;
+  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #6c757d;
 }
 
-/* 下一行按钮样式 */
-.toolbar-item.next-row {
-  flex-basis: calc(50% - 20rpx);
-  margin-top: 10rpx;
-}
 
-/* 预算标签样式 - 默认灰色 */
+
+/* 预算标签样式 */
 .toolbar-item.budget-tag {
-  background-color: #f5f5f5;
-  color: #999;
+  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #6c757d;
 }
 
-/* 日期标签样式 - 默认灰色 */
+/* 日期标签样式 */
 .toolbar-item.date-tag {
-  background-color: #f5f5f5;
-  color: #999;
+  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #6c757d;
 }
 
-/* 状态标签样式 - 默认灰色 */
+/* 状态标签样式 */
 .toolbar-item.status-tag {
-  background-color: #f5f5f5;
-  color: #999;
+  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #6c757d;
 }
 
-/* 成员标签样式 - 默认灰色 */
+/* 排序标签样式 */
+.toolbar-item.sort-tag {
+  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #6c757d;
+}
+
+/* 成员标签样式 */
 .toolbar-item.member-tag {
-  background-color: #f5f5f5;
-  color: #999;
+  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #6c757d;
 }
 
-/* 所有标签选中时统一颜色 - 增加选择器优先级 */
+/* 所有标签选中时统一颜色 */
 .toolbar-item.selected,
 .toolbar-item.status-tag.selected,
 .toolbar-item.date-tag.selected,
@@ -1500,21 +1558,50 @@ export default {
 .toolbar-item.category-tag.selected,
 .toolbar-item.account-tag.selected,
 .toolbar-item.ledger-tag.selected,
-.toolbar-item.member-tag.selected {
-  background-color: #e6f2ff;
-  color: #007AFF;
+.toolbar-item.member-tag.selected,
+.toolbar-item.sort-tag.selected {
+  background: linear-gradient(145deg, #e3f2fd 0%, #bbdefb 100%);
+  color: #1976d2;
+  border-color: #90caf9;
+  box-shadow: 0 4rpx 12rpx rgba(25, 118, 210, 0.2);
 }
 
-/* 重置按钮样式 - 始终突出显示 */
+/* 重置按钮样式 */
 .toolbar-item.reset-button {
-  background-color: #ff4757;
+  background: linear-gradient(145deg, #ff5252 0%, #ff1744 100%);
   color: #ffffff;
-  box-shadow: 0 2rpx 8rpx rgba(255, 71, 87, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(255, 82, 82, 0.4);
+  border-color: #ff5252;
+}
+
+.toolbar-item.reset-button:hover {
+  transform: translateY(-2rpx);
+  box-shadow: 0 6rpx 16rpx rgba(255, 82, 82, 0.5);
 }
 
 .toolbar-item.reset-button:active {
-  background-color: #ff3838;
-  box-shadow: 0 1rpx 4rpx rgba(255, 56, 56, 0.3);
+  transform: translateY(0);
+  background: linear-gradient(145deg, #ff1744 0%, #d32f2f 100%);
+  box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
+}
+
+/* 导出按钮样式 */
+.toolbar-item.export-button {
+  background: linear-gradient(145deg, #4caf50 0%, #2e7d32 100%);
+  color: #ffffff;
+  box-shadow: 0 4rpx 12rpx rgba(76, 175, 80, 0.4);
+  border-color: #4caf50;
+}
+
+.toolbar-item.export-button:hover {
+  transform: translateY(-2rpx);
+  box-shadow: 0 6rpx 16rpx rgba(76, 175, 80, 0.5);
+}
+
+.toolbar-item.export-button:active {
+  transform: translateY(0);
+  background: linear-gradient(145deg, #2e7d32 0%, #1b5e20 100%);
+  box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
 }
 
 /* 成员列表样式 */
@@ -1628,7 +1715,7 @@ export default {
 
 /* 内容区域 */
 .bill-list-content {
-  padding-top: 200rpx;
+  margin-top: 220rpx;
   padding-bottom: 100rpx;
 }
 
