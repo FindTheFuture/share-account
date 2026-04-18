@@ -47,3 +47,6 @@ logs/
 *.temp
 itbox/
 "*/星鉴*"
+*.code-workspace
+*.sh
+design-system/
