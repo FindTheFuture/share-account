@@ -10,6 +10,7 @@
             :uploadable="false"
             :show-edit-mask="false"
             :clickable="false"
+            size="182rpx"
           ></user-avatar>
         </view>
         <view class="user-details">
@@ -84,31 +85,12 @@
         </view>
       </view>
     </view>
-    
-    <!-- 通知设置功能区 -->
-    <view class="function-group">
-      <view class="strip-list">
-        <view class="strip-item" @click="handleNotificationClick">
-          <view class="strip-content">
-            <view class="strip-icon">
-              <custom-icon type="xiaoxi" :size="22" color="#1989fa"></custom-icon>
-            </view>
-            <view class="strip-text">
-              <view class="strip-title">接收账本通知</view>
-              <view class="strip-desc">开启后，账本变更时会收到通知</view>
-            </view>
-          </view>
-          <custom-icon type="xiangyou1" :size="18" color="#999"></custom-icon>
-        </view>
-      </view>
-    </view>
   </view>
 </template>
 
 <script>
   import UserAvatar from '@/components/user-avatar.vue'
   import CustomIcon from '@/components/custom-icon/custom-icon.vue'
-  import messageService from '../../common/messageService.js'
   
   export default {
     components: {
@@ -241,15 +223,6 @@
         uni.switchTab({ url });
       } else {
         uni.navigateTo({ url });
-      }
-    },
-    
-    // 处理通知授权
-    async handleNotificationClick() {
-      try {
-        await messageService.manualRequestAuthorizationNoCheck();
-      } catch (error) {
-        console.error('通知授权失败:', error);
       }
     },
     

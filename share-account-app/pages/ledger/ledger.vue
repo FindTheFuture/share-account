@@ -65,7 +65,7 @@
           <!-- 分组标题：使用 section-title 外观，左侧显示头像和名称 -->
           <view class="section-title shared-title">
             <view class="avatar-small">
-              <user-avatar :avatarUrl="group.parentUserPictureAddress" :clickable="false" :uploadable="false" :showEditMask="false" />
+              <user-avatar :avatarUrl="group.parentUserPictureAddress" :clickable="false" :uploadable="false" :showEditMask="false" size="64rpx" />
             </view>
             <text class="shared-title-name">{{ group.parentUserName }}</text>
             <view class="shared-title-suffix">
@@ -103,10 +103,6 @@
     <view class="floating-add-btn" :class="{ 'disabled': isGuest }" @click="onFloatingAddClick">
       <text class="add-btn-text">新增自己账本</text>
     </view>
-    <!-- 新增：悬浮查看分享记录按钮 -->
-    <view class="floating-share-record-btn" @click="navigateToMemberList">
-      <text class="share-record-text">分享记录</text>
-    </view>
 
     <!-- 确认对话框 -->
     <uni-popup ref="confirmPopup" type="center">
@@ -119,6 +115,9 @@
         </view>
       </view>
     </uni-popup>
+
+    <!-- 联系人分享弹窗 -->
+    <ContactSharePopup ref="contactSharePopup" @select="onContactSelect"></ContactSharePopup>
   </view>
 </template>
 
@@ -130,13 +129,15 @@ import UniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue
 import UniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
 import UniLoadMore from '@/uni_modules/uni-load-more/components/uni-load-more/uni-load-more.vue';
 import UserAvatar from '@/components/user-avatar.vue';
+import ContactSharePopup from '@/components/contact-share-popup.vue';
 
 export default {
   components: {
     UniIcons,
     UniPopup,
     UniLoadMore,
-    UserAvatar
+    UserAvatar,
+    ContactSharePopup
   },
   data() {
     return {
@@ -321,9 +322,10 @@ export default {
         uni.showToast({ title: '无法识别账本', icon: 'none' });
         return;
       }
-      uni.navigateTo({
-        url: `/pages/member/addMember?ledgerId=${id}`
-      });
+      // 保存当前账本信息，用于分享
+      this.currentLedger = ledger;
+      // 打开联系人分享弹窗
+      this.$refs.contactSharePopup.open();
     },
     // 新增：跳转到成员列表（查看分享记录）
     navigateToMemberList() {
@@ -396,6 +398,54 @@ export default {
         this.deleteLedger();
       }
       this.closeConfirmPopup();
+    },
+    
+    // 联系人选择回调，发送账本卡片消息
+    onContactSelect(contact) {
+      if (!this.currentLedger) {
+        uni.showToast({ title: '账本信息丢失', icon: 'none' });
+        return;
+      }
+      
+      const ledger = this.currentLedger;
+      const ledgerId = ledger.id || ledger.ledgerId;
+      
+      // 发送账本卡片消息
+      request({
+        url: backUrl.endpoints.chat_send,
+        method: 'POST',
+        data: {
+          toUserId: contact.userId,
+          type: 2, // 账本卡片消息类型
+          content: JSON.stringify({
+            title: ledger.name || ledger.ledgerName,
+            desc: '点击查看账本详情',
+            ledgerId: ledgerId,
+            status: 0
+          }),
+          imageUrl: null
+        }
+      }).then(res => {
+        // 判断成功：res.code === 200 或 res.data === true 或 res === true
+        const success = res && (res.code === 200 || res.data === true || res === true);
+        if (success) {
+          uni.showToast({
+            title: '分享成功',
+            icon: 'success'
+          });
+        } else {
+          uni.showToast({
+            title: '分享失败',
+            icon: 'none'
+          });
+        }
+      }).catch(err => {
+        console.error('分享账本失败:', err);
+        uni.showToast({
+          title: '分享失败',
+          icon: 'none'
+        });
+      });
     },
     
     // 更新账本状态
@@ -635,11 +685,10 @@ export default {
 .avatar-small {
   width: 64rpx;
   height: 64rpx;
-  transform: scale(0.32);
-  transform-origin: left center;
-  overflow: visible;
+  overflow: hidden;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .no-data-sub {

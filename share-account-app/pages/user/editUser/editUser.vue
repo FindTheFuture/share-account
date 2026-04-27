@@ -18,6 +18,7 @@
           @click="onAvatarClick"
           @upload-success="onAvatarUploadSuccess"
           @upload-error="onAvatarUploadError"
+          size="200rpx"
         ></user-avatar>
       </view>
       

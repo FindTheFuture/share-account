@@ -4,3 +4,6 @@ spring:
     username: app_user
     password: Lzy526140450$$
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+sms:
+  enabled: true

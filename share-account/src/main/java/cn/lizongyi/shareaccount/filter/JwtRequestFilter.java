@@ -28,13 +28,16 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     // 定义不需要 JWT 验证的路径
     private final List<String> noCheckPaths = Arrays.asList(
             "/login/login",
-            "/login/refreshToken",
+            "/login/sms",
             "/api/pay/notify",
             "/slide/findOpenAll",
             "/goods/homelist",
             "/users/checkNewUser",
             "/login/guest",
-            "/tool/syncIconfont"
+            "/tool/syncIconfont",
+            "/sms/send",
+            "/config/theme",
+            "/config/share"
     );
 
     // 定义需要正则匹配的路径

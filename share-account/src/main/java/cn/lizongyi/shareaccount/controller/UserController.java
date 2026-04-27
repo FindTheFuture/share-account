@@ -1,5 +1,6 @@
 package cn.lizongyi.shareaccount.controller;
 
+import cn.lizongyi.shareaccount.entity.User;
 import cn.lizongyi.shareaccount.enums.RoleTypeEnum;
 import cn.lizongyi.shareaccount.request.CreateUserRequest;
 import cn.lizongyi.shareaccount.request.QueryUserListRequest;
@@ -13,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/users")
@@ -116,6 +119,53 @@ public class UserController {
         Boolean success = userService.setRole(userId, role);
         log.info("给用户id:{}  设置角色：{}   结果：{}", userId, role, success);
         return ResponseEntity.ok(ApiResponse.success(success));
+    }
+
+    @GetMapping("/findByPhone")
+    public ResponseEntity<ApiResponse<UserResponse>> findByPhone(@RequestParam String phone) {
+        log.info("根据手机号:{} 查询用户信息", phone);
+
+        if (phone == null || phone.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.error("手机号不能为空"));
+        }
+
+        try {
+            List<UserResponse> users = userService.findByPhone(phone.trim());
+            if (users == null || users.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.success(null));
+            }
+            UserResponse user = users.get(0);
+            return ResponseEntity.ok(ApiResponse.success(user));
+        } catch (Exception e) {
+            log.error("查询用户失败", e);
+            return ResponseEntity.ok(ApiResponse.error("查询用户失败"));
+        }
+    }
+
+    @GetMapping("/exists/{userId}")
+    public ResponseEntity<Boolean> exists(@PathVariable Long userId) {
+        if (userId == null || userId <= 0) {
+            return ResponseEntity.ok(false);
+        }
+        UserResponse user = userService.findResponseById(userId);
+        return ResponseEntity.ok(user != null);
+    }
+
+    @GetMapping("/findLikePhone")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> findLikePhone(@RequestParam String phone) {
+        log.info("模糊搜索手机号:{} 查询用户信息", phone);
+
+        if (phone == null || phone.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.error("手机号不能为空"));
+        }
+
+        try {
+            List<UserResponse> users = userService.findLikePhone(phone.trim());
+            return ResponseEntity.ok(ApiResponse.success(users));
+        } catch (Exception e) {
+            log.error("模糊搜索用户失败", e);
+            return ResponseEntity.ok(ApiResponse.error("搜索用户失败"));
+        }
     }
 
 

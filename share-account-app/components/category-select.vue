@@ -158,15 +158,18 @@ export default {
       currentSubSubCategories: [],
       loading: false,
       // 返回后刷新标记
-      shouldRefresh: false
+      shouldRefresh: false,
+      // 待回填的分类ID（用于分类数据未加载完成时缓存）
+      pendingCategoryId: null
     };
   },
   watch: {
     // 监听选中分类变化，用于编辑模式回填
       selectedCategory: {
         handler(newVal) {
-          if (newVal && newVal.originalId && this.topLevelCategories.length > 0) {
-            // 直接调用，不再使用immediate选项，避免重复执行
+          // 直接调用 setSelectedByOriginalId，它内部有保护逻辑
+          // 不要在这里检查 topLevelCategories.length，因为可能在分类加载完成之前就被调用
+          if (newVal && newVal.originalId) {
             this.setSelectedByOriginalId(newVal.originalId);
           }
         },
@@ -203,12 +206,14 @@ export default {
           this.topLevelCategories = this.categoryTree.filter(cat => cat.parentId === null);
           if (this.topLevelCategories.length > 0) {
             this.loadCurrentSubCategories();
-            
+
             // 数据加载完成后，检查是否需要回填分类
-            if (this.selectedCategory && this.selectedCategory.originalId) {
-              // 立即执行，不再延迟，因为已经确保了数据加载完成
+            // 优先使用待回填的分类ID（来自父组件的编辑模式）
+            const categoryIdToSelect = this.pendingCategoryId || (this.selectedCategory && this.selectedCategory.originalId);
+            if (categoryIdToSelect) {
               this.$nextTick(() => {
-                this.setSelectedByOriginalId(this.selectedCategory.originalId);
+                this.setSelectedByOriginalId(categoryIdToSelect);
+                this.pendingCategoryId = null; // 清空待回填标记
               });
             }
           }
@@ -373,21 +378,27 @@ export default {
     
     // 根据原始ID设置选中的分类（用于编辑模式回填）
     setSelectedByOriginalId(originalId) {
-      if (!originalId || !this.topLevelCategories.length) return;
-      
+      if (!originalId) return;
+
+      // 如果分类数据还没加载完成，缓存待回填的分类ID
+      if (!this.topLevelCategories || this.topLevelCategories.length === 0) {
+        this.pendingCategoryId = originalId;
+        return;
+      }
+
       // 创建一个映射缓存，提高查找效率
       let categoryMap = this.createCategoryMap(this.categoryTree);
       let targetCategory = categoryMap[originalId] || categoryMap[String(originalId)];
-      
+
       if (!targetCategory) {
         // 如果映射缓存没找到，使用递归查找作为兜底
         targetCategory = this.findCategoryById(originalId, this.categoryTree);
         if (!targetCategory) return;
       }
-      
+
       // 快速定位到对应的顶级分类并切换
       this.switchToTopLevel(targetCategory);
-      
+
       // 直接选中目标分类，避免多次查找
       this.$emit('select', targetCategory);
     },

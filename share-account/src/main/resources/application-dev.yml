@@ -4,3 +4,6 @@ spring:
     username: root
     password: Lzyjiayou
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+sms:
+  enabled: false

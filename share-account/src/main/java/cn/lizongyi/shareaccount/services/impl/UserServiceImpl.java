@@ -154,16 +154,28 @@ public class UserServiceImpl implements UserService {
 
 
     @Override
-    public List<User> findByPhone(String phone){
-        return userMapper.findByPhone(phone);
+    public List<UserResponse> findByPhone(String phone){
+        List<UserResponse> userList = userMapper.findByPhone(phone).stream().map(user -> UserResponse.fromUser(user, RoleTypeEnum.USER.getId(), null)).collect(Collectors.toList());
+        if(CollectionUtils.isEmpty(userList)){
+            log.info("手机号:{} 未查询到用户", phone);
+            return null;
+        }
+        userList.stream().forEach(userResponse -> fillPicture(userResponse));
+        return userList;
     }
 
     /**
      *  模糊查询
      */
     @Override
-    public List<User> findLikePhone(String phone) {
-        return userMapper.findLikePhone(phone);
+    public List<UserResponse> findLikePhone(String phone) {
+        List<UserResponse> userList = userMapper.findLikePhone(phone).stream().map(user -> UserResponse.fromUser(user, RoleTypeEnum.USER.getId(), null)).collect(Collectors.toList());
+        if(CollectionUtils.isEmpty(userList)){
+            log.info("手机号:{} 未查询到用户", phone);
+            return null;
+        }
+        userList.stream().forEach(userResponse -> fillPicture(userResponse));
+        return userList;
     }
 
 
@@ -295,17 +307,10 @@ public class UserServiceImpl implements UserService {
         if(user == null){
             return;
         }
-        List<Picture> pictureList = pictureService.findByObjectId(user.getHaoe(), PictureTypeEnum.AVATAR_USER.getId());
-        if(CollectionUtils.isEmpty(pictureList)){
-            log.info("没有查询到图片");
+        Picture picture = pictureService.findUserAvatarUrl(user.getHaoe());
+        if(picture == null){
+            log.info("根据userId： {}  没有查询到图片", user.getHaoe());
             user.setPictureAddress(baseHandler.getDefaultUserAvatar(null));
-            return;
-        }
-        pictureList = pictureList.stream().sorted(Comparator.comparing(Picture::getCreateTime).reversed()).collect(Collectors.toList());
-
-        Picture picture = pictureList.get(0);
-        if(picture.getStatus() == 1){
-            log.info("图片状态不正确");
             return;
         }
         baseHandler.fillPicPresignUrl(picture);

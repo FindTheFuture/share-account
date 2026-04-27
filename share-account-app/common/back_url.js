@@ -11,10 +11,22 @@ const config = {
         login_guest: '/login/guest',
         // 新增：游客升级为正式用户
         login_upgrade: '/login/upgrade',
+        // 新增：短信验证码登录
+        login_sms: '/login/sms',
+        // 新增：发送短信验证码
+        sms_send: '/sms/send',
+        // 新增：配置相关接口
+        config_theme: '/config/theme',
+        config_share: '/config/share',
         getUserInfo: '/users/getById/',
+        userExists: '/users/exists/',
 		findUserList: '/users/findUserList',
 		saveUser: '/users/save',
 		setRole: '/users/setRole',
+        user_findByPhone: '/users/findByPhone',
+        user_findLikePhone: '/users/findLikePhone',
+
+        
 		getConfigByType: '/base/getConfigByType/',
 		getFeatureList: '/base/getFeatureList',
 		fileUpload: '/file/fileUpload',
@@ -121,7 +133,12 @@ const config = {
         payment_createPayment: '/api/payment/v3/createPayment',
         payment_getPayInfo: '/api/payment/v3/payinfo/',
         payment_checkStatus: '/api/payment/v3/checkstatus/',
-        
+
+        // 抖音支付相关接口
+        douyin_payment_createPayment: '/api/douyinPayment/createPayment',
+        douyin_payment_getPayInfo: '/api/douyinPayment/payinfo/',
+        douyin_payment_checkStatus: '/api/douyinPayment/checkstatus/',
+
         // 会员套餐相关接口
         membership_packages: '/api/membership/packages',
 
@@ -137,7 +154,24 @@ const config = {
         scheduledBill_updateStatus: '/api/scheduledBill/',
         scheduledBill_delete: '/api/scheduledBill/',
         scheduledBill_log_list: '/api/scheduledBill/',
-        scheduledBill_log_getById: '/api/scheduledBill/log/'
+        scheduledBill_log_getById: '/api/scheduledBill/log/',
+
+        // 联系人相关接口
+        contact_list: '/contact/list',
+        contact_requests: '/contact/requests',
+        contact_requestCount: '/contact/requestCount',
+        contact_add: '/contact/add',
+        contact_accept: '/contact/accept/',
+        contact_reject: '/contact/reject/',
+
+        // 聊天相关接口
+        chat_send: '/chat/send',
+        chat_history: '/chat/history',
+        chat_unreadCount: '/chat/unreadCount/',
+        chat_markRead: '/chat/markRead/',
+        chat_delete: '/chat/delete/',
+        chat_updateInviteStatus: '/chat/updateInviteStatus/'
+        
     }
 };
 

@@ -41,9 +41,21 @@ public final class Constants {
     public static final String WECHAT_V3_SERIAL_NO = "wechat.v3.serialNo";  // 微信V3 商户证书序列号
     public static final String WECHAT_V3_NOTIFY_URL = "wechat.v3.notifyUrl";  // 微信V3 支付回调通知地址
     public static final String WECHAT_V3_API_V3_KEY = "wechat.v3.apiV3Key";  // 微信V3 API密钥
-    
+
+    // 抖音支付配置
+    public static final String DOUYIN_PAY_CONFIG = "douyin.pay.config";  // 抖音支付配置（JSON格式）
+
     // JWT配置
     public static final String JWT_SECRET = "jwt.secret";  // JWT密钥
+
+    // 阿里云短信配置
+    public static final String ALIYUN_SMS_CONFIG = "aliyun_sms_config";  // 阿里云短信配置
+
+    // 主题配置
+    public static final String THEME_CONFIG = "theme_config";  // 主题配置
+
+    // 分享配置
+    public static final String SHARE_CONFIG = "share_config";  // 分享配置
 
     // 游客模式配置
     public static final String GUEST_MODE_ENABLED = "guest.mode.enabled";           // 游客模式开关：默认开启

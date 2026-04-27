@@ -17,6 +17,7 @@
             :show-edit-mask="false"
             :clickable="true"
             @click="previewAvatar"
+            size="180rpx"
           ></user-avatar>
           <view class="avatar-badge" v-if="userInfo.roleName">
             {{ userInfo.roleName }}

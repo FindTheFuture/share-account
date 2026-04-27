@@ -80,10 +80,18 @@ export default {
       this.loadMemberData();
     }
 
+    // #ifdef MP-WEIXIN
     uni.showShareMenu({
       withShareTicket: true,
       menus: ['shareAppMessage']
     });
+    // #endif
+    // #ifdef MP-TOUTIAO
+    uni.showShareMenu({
+      withShareTicket: true,
+      menus: ['share']
+    });
+    // #endif
   },
   
 
@@ -142,10 +150,18 @@ export default {
           this.showShareButton = true;
           // 启用分享功能
           try {
+            // #ifdef MP-WEIXIN
             await uni.showShareMenu({
               withShareTicket: true,
               menus: ['shareAppMessage']
             });
+            // #endif
+            // #ifdef MP-TOUTIAO
+            await uni.showShareMenu({
+              withShareTicket: true,
+              menus: ['share']
+            });
+            // #endif
           } catch (err) {
             console.error('启用分享功能失败:', err);
           }

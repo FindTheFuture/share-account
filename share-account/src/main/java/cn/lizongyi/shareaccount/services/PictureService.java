@@ -9,6 +9,7 @@ public interface PictureService {
     List<Picture> findAll();
     List<Picture> findByObjectId(Long objectId, Integer type);
     Picture findById(Long id);
+    Picture findUserAvatarUrl(Long objectId);
     List<Picture> findByIds(@Param("ids") List<Long> ids);
     List<Picture> findByStatus(Integer status);
     Boolean save(Picture picture);

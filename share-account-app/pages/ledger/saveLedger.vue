@@ -67,7 +67,6 @@ import backUrl from '@/common/back_url.js';
 import UniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 import UniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
 import UniLoadMore from '@/uni_modules/uni-load-more/components/uni-load-more/uni-load-more.vue';
-import messageService from '@/common/messageService.js';
 
 export default {
   components: {
@@ -219,13 +218,6 @@ export default {
         return;
       }
 
-      // 直接请求消息授权（在用户点击的直接上下文中）
-      try {
-        await messageService.manualRequestAuthorization();
-      } catch (error) {
-        // 授权失败不处理
-      }
-      
       this.isSubmitting = true;
       
       // 创建一个新的提交数据对象，确保isDefault是数字类型

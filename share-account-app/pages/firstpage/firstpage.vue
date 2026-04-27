@@ -52,6 +52,22 @@
     <!-- 引导卡片 -->
     <GuideCard v-if="showGuideCard" :card="guideCard" @close="markGuideCardRead" class="animate-slide-in animate-slide-in-2" />
 
+    <!-- 手机号填写提示弹窗 -->
+    <uni-popup ref="phonePromptPopup" type="center" :mask-click="false">
+      <view class="phone-prompt-card">
+        <view class="phone-prompt-header">
+          <text class="phone-prompt-title">重要提醒</text>
+        </view>
+        <view class="phone-prompt-body">
+          <text class="phone-prompt-text">微信登录即将关闭，请及时填写手机号，方便下次手机号登录</text>
+        </view>
+        <view class="phone-prompt-footer">
+          <button class="phone-prompt-btn cancel" @click="closePhonePrompt">稍后再说</button>
+          <button class="phone-prompt-btn confirm" @click="goToEditUser">去填写</button>
+        </view>
+      </view>
+    </uni-popup>
+
     <!-- 主内容区域 -->
     <view class="content">
       <view class="main-content" v-if="selectedLedger">
@@ -268,9 +284,8 @@ import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue
 import billListComponent from '@/components/bill-list-component.vue';
 import LedgerSelectPopup from '@/components/ledger-select-popup.vue';
 import GuideCard from '@/components/guide-card.vue';
-import { resolveShareInfo } from '@/common/shareStrategy.js';
 import { formatAmount } from '@/common/util.js';
-import messageService from '@/common/messageService.js';
+import { isLoggedIn, clearLoginState } from '@/common/isLoggedIn.js';
 
 export default {
   components: {
@@ -331,6 +346,8 @@ export default {
         currentBill: null,
         // 账单弹窗可见性标记，用于控制悬浮添加按钮的显示/隐藏
         isBillPopupVisible: false,
+        // 手机号填写提示弹窗
+        showPhonePrompt: false,
         // 消息相关
         latestMessage: null,
         unreadCount: 0,
@@ -452,27 +469,27 @@ export default {
     this.initYearList();
     // 更新时间范围参数，设置为最近一年
     this.updateTimeRange();
-    // 页面展示时，自动初始化账本组件并选中默认账本
-    if (this.$refs.ledgerPopup) {
-      // 强制重新加载账本数据
-      await this.$refs.ledgerPopup.loadLedgers();
-      if (this.$refs.ledgerPopup.queryShared) {
-        await this.$refs.ledgerPopup.loadSharedLedgers();
-      }
-      // 执行自动选择，确保账本数据已加载完成
-      if (this.$refs.ledgerPopup.initAutoSelect) {
-        await this.$refs.ledgerPopup.initAutoSelect();
-      }
+    // 先确保账本已选中，再加载数据
+    await this.waitForLedgerPopupReady();
+    if (this.$refs.ledgerPopup && typeof this.$refs.ledgerPopup.initAutoSelect === 'function') {
+      await this.$refs.ledgerPopup.initAutoSelect();
     }
     // 无论是否有选中的账本，都重新加载数据
     // 确保登录后能获取最新数据
     await this.loadAllData();
     this.tryShowGuideCard();
-    // 检查消息授权状态（内部会自动初始化消息服务和加载模板配置）
-    this.checkMessageAuthorization();
-    // 显示分享菜单（包含朋友圈）
+    this.checkPhonePrompt();
+    // 显示分享菜单（支持多平台）
     try {
+      // #ifdef MP-WEIXIN
       uni.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
+      // #endif
+      // #ifdef MP-TOUTIAO
+      uni.showShareMenu({ withShareTicket: true, menus: ['share'] });
+      // #endif
+      // #ifndef MP-WEIXIN && !MP-TOUTIAO
+      uni.showShareMenu({ withShareTicket: true });
+      // #endif
     } catch (e) { /* ignore */ }
     
     // 获取AI剩余次数
@@ -495,37 +512,7 @@ export default {
     // 停止下拉刷新动画
     uni.stopPullDownRefresh();
   },
-  
-  // 分享生命周期函数
-  async onShareAppMessage(res) {
-    // 仅当来源为按钮（弹窗分享按钮）时，按账单分享（组件内已处理预保存与回调）
-    if (res && res.from === 'button') {
-      if (this.$refs.billListComponent && typeof this.$refs.billListComponent.getShareInfo === 'function') {
-        try {
-          return this.$refs.billListComponent.getShareInfo(true);
-        } catch (error) {
-          console.error('组件分享信息获取失败:', error);
-        }
-      }
-    }
 
-    // 非按钮触发：固定分享账本，不区分弹窗状态
-    return {
-      title: '分享给你一个账本',
-      path: '/pages/firstpage/firstpage',
-      imageUrl: 'https://shareaccount-1302778096.cos.ap-beijing.myqcloud.com/title.png'
-    };
-  },
-  // 朋友圈分享钩子（微信小程序）
-  onShareTimeline() {
-    const title = '分享给你一个账本';
-    const imageUrl = 'https://shareaccount-1302778096.cos.ap-beijing.myqcloud.com/title.png';
-    return {
-      title,
-      query: '',
-      imageUrl
-    };
-  },
   watch: {
     // 监听预算数据变化，重新初始化进度条
     budgetSpent: {
@@ -588,44 +575,42 @@ export default {
     // 检查登录状态，如果未登录则自动获取游客账号
     async checkLoginStatus() {
       try {
-        // 检查本地存储中的登录状态
-        const token = uni.getStorageSync('token');
-        // 更新游客状态
-        this.isGuest = !!uni.getStorageSync('isGuest');
-        
-        if (token) {
-          // 已登录，更新当前用户ID
-          this.currentUserId = uni.getStorageSync('additionalId') || '';
-          // 触发数据重新加载
-          this.loadAllData();
+        const result = await isLoggedIn();
+
+        // 已登录：isGuest=false + token + additionalId + 用户存在
+        if (result.loggedIn) {
+          const additionalId = uni.getStorageSync('additionalId');
+          this.currentUserId = additionalId;
+          this.isGuest = false;
           return true;
         }
-        
-        // 未登录，调用游客登录接口
+
+        // 未登录：清除登录态缓存
+        clearLoginState();
+        this.currentUserId = '';
+        this.isGuest = false;
+
+        // 调用游客登录接口
         uni.showLoading({ title: '加载中...' });
-        
+
         const response = await uni.request({
           url: `${this.$backUrlConfig.baseUrl}${this.$backUrlConfig.endpoints.login_guest}`,
           method: 'POST'
         });
-        
-        console.log('游客登录响应:', response);
+
         const data = response.data;
-        
-        if (data.code == 200 && data.data && data.data.token && data.data.refresh_token) {
-          const { token, refresh_token, expires_in, additionalId, thunder, canSendMessage, guideCard } = data.data;
-          this.saveToken(token, refresh_token, expires_in, additionalId, thunder, canSendMessage);
-          // 游客登录：存储引导卡片和游客标记
+
+        if (data.code == 200 && data.data && data.data.token) {
+          const { token, expires_in, additionalId, thunder, canSendMessage, guideCard } = data.data;
+          this.saveToken(token, expires_in, additionalId, thunder, canSendMessage);
           if (guideCard) {
             try { uni.setStorageSync('guideCard', JSON.stringify(guideCard)); } catch (e) { uni.setStorageSync('guideCard', guideCard); }
           }
           uni.setStorageSync('isGuest', true);
           this.isGuest = true;
           this.currentUserId = additionalId || '';
-          
+
           uni.hideLoading();
-          // 触发数据重新加载
-          this.loadAllData();
           return true;
         } else {
           console.error('游客登录接口返回错误:', data);
@@ -640,10 +625,9 @@ export default {
     },
     
     // 保存token信息
-    saveToken(token, refresh_token, expires_in, additionalId, thunder, canSendMessage) {
+    saveToken(token, expires_in, additionalId, thunder, canSendMessage) {
       uni.setStorageSync('token', token);
       uni.setStorageSync('additionalId', additionalId);
-      uni.setStorageSync('refreshToken', refresh_token);
       const expireAt = Date.now() + expires_in * 1000;
       uni.setStorageSync('expireAt', expireAt);
 
@@ -652,7 +636,6 @@ export default {
 
       const app = getApp();
       app.globalData.token = token;
-      app.globalData.refreshToken = refresh_token;
       app.globalData.expireAt = expireAt;
       app.globalData.additionalId = additionalId;
       app.globalData.thunder = thunder;
@@ -679,22 +662,27 @@ export default {
     },
 
     /**
-     * 检查消息授权状态
+     * 等待 ledgerPopup 组件就绪
+     * 在 onShow 时组件可能还未挂载，需要多次尝试
      */
-    async checkMessageAuthorization() {
-      try {
-        // 使用wx.getSetting检查授权状态
-        const setting = await new Promise((resolve) => {
-          wx.getSetting({ 
-            withSubscriptions: true,
-            success: resolve 
-          });
-        });
-        await messageService.initPageAuthorization('firstpage');
-      } catch (error) {
-        // 授权失败不处理，符合需求
-      }
+    waitForLedgerPopupReady() {
+      return new Promise((resolve) => {
+        let retries = 0;
+        const maxRetries = 10;
+        const check = () => {
+          if (this.$refs.ledgerPopup) {
+            resolve();
+          } else if (retries < maxRetries) {
+            retries++;
+            setTimeout(check, 100);
+          } else {
+            resolve();
+          }
+        };
+        check();
+      });
     },
+
     formatAmount,
     // 获取消息数据
     async fetchMessageData() {
@@ -773,7 +761,7 @@ export default {
     },
     
     // 加载所有数据（账单和预算）
-    loadAllData() {
+    async loadAllData() {
       // 同步更新账单列表查询参数
       this.initRecentBillsParams();
       // 更新时间范围参数，使用选中的年月
@@ -1201,6 +1189,37 @@ export default {
       uni.setStorageSync(readKey, true);
       this.showGuideCard = false;
     },
+    // 手机号填写提示弹窗：检查逻辑
+    async checkPhonePrompt() {
+      const userId = uni.getStorageSync('additionalId');
+      const isGuest = !!uni.getStorageSync('isGuest');
+      if (!userId || isGuest) {
+        return;
+      }
+      try {
+        const res = await this.$request({
+          url: this.$backUrlConfig.endpoints.getUserInfo + userId,
+          method: 'GET'
+        });
+        if (res && !res.phone) {
+          this.$refs.phonePromptPopup.open();
+        }
+      } catch (e) {
+        console.error('检查手机号失败:', e);
+      }
+    },
+    // 关闭手机号提示弹窗
+    closePhonePrompt() {
+      this.$refs.phonePromptPopup.close();
+    },
+    // 跳转到编辑用户页面
+    goToEditUser() {
+      this.$refs.phonePromptPopup.close();
+      const userId = uni.getStorageSync('additionalId');
+      uni.navigateTo({
+        url: `/pages/user/editUser/editUser?haoe=${userId}`
+      });
+    },
     
     /**
      * 更新时间范围参数
@@ -1365,6 +1384,63 @@ export default {
 <style scoped>
 /* 引入iconfont.css */
 @import url('@/static/iconfont.css');
+
+/* 手机号填写提示弹窗 */
+.phone-prompt-card {
+  width: 560rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+.phone-prompt-header {
+  padding: 40rpx 32rpx 20rpx;
+  text-align: center;
+}
+
+.phone-prompt-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #333333;
+}
+
+.phone-prompt-body {
+  padding: 0 32rpx 32rpx;
+}
+
+.phone-prompt-text {
+  font-size: 28rpx;
+  color: #666666;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.phone-prompt-footer {
+  display: flex;
+  gap: 24rpx;
+  padding: 0 32rpx 32rpx;
+}
+
+.phone-prompt-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  border: none;
+  margin: 0;
+}
+
+.phone-prompt-btn.cancel {
+  background: #f5f5f5;
+  color: #666666;
+}
+
+.phone-prompt-btn.confirm {
+  background: linear-gradient(135deg, #07c160 0%, #05a054 100%);
+  color: #ffffff;
+}
 
 /* 页面加载动画 - 流畅冒泡效果 */
 @keyframes bubbleIn {

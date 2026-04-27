@@ -15,4 +15,6 @@ public interface LoginService {
     Map<String, Object> guestLogin() throws Exception;
     // 新增：游客升级为正常用户
     Map<String, Object> upgradeGuest(String code) throws Exception;
+    // 新增：短信验证码登录
+    Map<String, Object> smsLogin(String phone, String code) throws Exception;
 }

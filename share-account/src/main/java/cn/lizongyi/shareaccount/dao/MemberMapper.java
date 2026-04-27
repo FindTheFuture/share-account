@@ -69,13 +69,17 @@ public interface MemberMapper {
     @Delete("DELETE FROM member WHERE ledger_id = #{ledgerId} AND user_id = #{userId}")
     int deleteByLedgerIdAndUserId(@Param("ledgerId") Long ledgerId, @Param("userId") Long userId);
 
-    // 查找同一邀请人对同一账单的待接受邀请（user_id 为空，status=0）
-    @Select("SELECT * FROM member WHERE ledger_id = #{ledgerId} AND bill_id = #{billId} AND parent_user_id = #{parentUserId} AND status = 0 AND (user_id IS NULL OR user_id = 0) ORDER BY create_time DESC LIMIT 1")
-    Member findPendingInvite(@Param("ledgerId") Long ledgerId, @Param("billId") Long billId, @Param("parentUserId") Long parentUserId);
+    // 查找同一邀请人对同一账本的待接受邀请（ledger_id, parent_user_id, user_id, bill_id is null, status=0）
+    @Select("SELECT * FROM member WHERE ledger_id = #{ledgerId} AND parent_user_id = #{parentUserId} AND user_id = #{userId} AND status = #{status} AND bill_id is null ORDER BY create_time DESC LIMIT 1")
+    Member findPendingInvite(@Param("ledgerId") Long ledgerId, @Param("parentUserId") Long parentUserId, @Param("userId") Long userId, @Param("status") Integer status);
+
+    // 查找账本成员（ledger_id, parent_user_id, user_id, bill_id is null）
+    @Select("SELECT * FROM member WHERE ledger_id = #{ledgerId} AND parent_user_id = #{parentUserId} AND user_id = #{userId} AND bill_id is null ORDER BY create_time DESC LIMIT 1")
+    Member findLedgerMember(@Param("ledgerId") Long ledgerId, @Param("parentUserId") Long parentUserId, @Param("userId") Long userId);
 
     // 查找完整唯一键（ledger_id, bill_id, parent_user_id, user_id）
-    @Select("SELECT * FROM member WHERE ledger_id = #{ledgerId} AND bill_id = #{billId} AND parent_user_id = #{parentUserId} AND user_id = #{userId}")
-    Member findByFullKey(@Param("ledgerId") Long ledgerId, @Param("billId") Long billId, @Param("parentUserId") Long parentUserId, @Param("userId") Long userId);
+    @Select("SELECT * FROM member WHERE ledger_id = #{ledgerId} AND bill_id = #{billId} AND parent_user_id = #{parentUserId} AND user_id = #{userId} AND status = #{status}")
+    Member findByFullKey(@Param("ledgerId") Long ledgerId, @Param("billId") Long billId, @Param("parentUserId") Long parentUserId, @Param("userId") Long userId, @Param("status") Integer status);
 
     // 过期未接受的邀请标记为 status=2（2天前创建）
     @Update("UPDATE member SET status = 2 WHERE status = 0 AND create_time < #{cutoff}")

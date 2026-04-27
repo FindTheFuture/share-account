@@ -18,7 +18,6 @@ export function logout(opts = {}) {
     try {
         // 清除鉴权相关本地存储
         uni.removeStorageSync('token');
-        uni.removeStorageSync('refreshToken');
         uni.removeStorageSync('expireAt');
         uni.removeStorageSync('additionalId');
         uni.removeStorageSync('redirectAfterLogin');
@@ -143,7 +142,6 @@ function _request(options, customOptions = {}) {
                 } else if (res.statusCode === 401) {
                     // 未授权，清除token并显示登录弹窗
                     uni.removeStorageSync('token');
-                    uni.removeStorageSync('refreshToken');
                     uni.removeStorageSync('expireAt');
                     uni.removeStorageSync('additionalId');
                     

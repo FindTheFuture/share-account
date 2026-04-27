@@ -73,7 +73,7 @@
         <view class="popup-header">
           <text class="popup-title">账单详情</text>
           <view class="popup-actions-header">
-            <button v-if="!isGuest" open-type="share" class="action-text action-share breath-animation" @touchstart="prepareShareMember" @tap="onShareClick">分享</button>
+            <button v-if="!isGuest" class="action-text action-share breath-animation" @click="navigateToShareContact">分享</button>
             <button class="action-text action-comment breath-animation" @click="openComments">评论</button>
              <custom-icon v-if="isCurrentUserOwner && currentBill && currentBill.status === 0" type="bianji" :size="21" color="#1989fa" @click="editBill" class="action-icon"></custom-icon>
              <custom-icon v-if="isCurrentUserOwner && currentBill && currentBill.status === 0" type="shanchu" :size="21" color="#ff4d4f" @click="deleteBill" class="action-icon"></custom-icon>
@@ -131,6 +131,9 @@
       </view>
       </uni-popup>
     </view>
+
+    <!-- 联系人分享弹窗 -->
+    <ContactSharePopup ref="contactSharePopup" @select="onContactSelect" />
   </template>
   
   <script>
@@ -144,6 +147,7 @@ import { prepareBillMember, resolveShareInfo } from '@/common/shareStrategy.js';
 import { formatAmount, normalizeBillQueryParams, validateBillQueryParams } from '@/common/util.js';
 import { mapGetters } from 'vuex'
 import { themeIconColor } from '@/components/utils.js'
+import ContactSharePopup from '@/components/contact-share-popup.vue';
 
 export default {
   name: 'bill-list-component',
@@ -151,7 +155,8 @@ export default {
     UniIcons,
     UniPopup,
     UniLoadMore,
-    UniPagination
+    UniPagination,
+    ContactSharePopup
   },
   props: {
     // 请求参数，由父组件传入
@@ -229,6 +234,7 @@ export default {
       shareMemberId: null,
       shareIntent: false,
       _sharePreparing: false,
+      selectedBillForShare: null,
       // 游客模式标记
       isGuest: false,
       // 评论相关
@@ -867,6 +873,53 @@ export default {
     async onShareClick() {
       console.log('onShareClick: shareIntent set to true');
       this.shareIntent = true;
+    },
+
+    navigateToShareContact() {
+      if (this.isGuest) {
+        uni.showModal({
+          title: '提示',
+          content: '请登录后分享账单',
+          showCancel: false
+        });
+        return;
+      }
+      if (!this.currentBill) {
+        uni.showToast({ title: '请先选择账单', icon: 'none' });
+        return;
+      }
+      this.selectedBillForShare = this.currentBill;
+      this.$refs.contactSharePopup.open();
+    },
+    async onContactSelect(contact) {
+      if (!this.selectedBillForShare) return;
+      const bill = this.selectedBillForShare;
+      const amountStr = bill.price > 0 ? '+' + (bill.price / 100).toFixed(2) : '-' + (Math.abs(bill.price) / 100).toFixed(2);
+      try {
+        const res = await request({
+          url: backUrl.endpoints.chat_send,
+          method: 'POST',
+          data: {
+            toUserId: contact.userId,
+            type: 3,
+            content: JSON.stringify({
+              title: `${bill.className || '账单'} ${amountStr}`,
+              desc: `分类：${bill.className || '-'} 金额：${amountStr}`,
+              billId: bill.id,
+              status: 0
+            })
+          }
+        });
+        if (res) {
+          uni.showToast({ title: '发送成功', icon: 'success' });
+        } else {
+          uni.showToast({ title: '发送失败', icon: 'none' });
+        }
+      } catch (e) {
+        console.error('发送账单分享失败', e);
+        uni.showToast({ title: '发送失败', icon: 'none' });
+      }
+      this.selectedBillForShare = null;
     },
 
     // 触摸开始时预保存成员，尽量在分享回调前拿到ID

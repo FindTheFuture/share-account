@@ -5,6 +5,7 @@ import cn.lizongyi.shareaccount.entity.Config;
 import cn.lizongyi.shareaccount.response.QueryFeatureListResponse;
 import cn.lizongyi.shareaccount.services.BaseHandler;
 import cn.lizongyi.shareaccount.services.ConfigService;
+import cn.lizongyi.shareaccount.constants.Constants;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -173,6 +174,69 @@ public class ConfigServiceImpl implements ConfigService {
         } catch (Exception e) {
             log.error("获取JSON配置失败: key={}", key, e);
             return defaultValue;
+        }
+    }
+
+    /**
+     * 获取主题配置
+     * @return 主题配置
+     */
+    @Override
+    public cn.lizongyi.shareaccount.response.ThemeConfigResponse getThemeConfig() {
+        try {
+            cn.lizongyi.shareaccount.response.ThemeConfigResponse response = getJsonValue(
+                Constants.THEME_CONFIG,
+                cn.lizongyi.shareaccount.response.ThemeConfigResponse.class,
+                null
+            );
+            if (response == null) {
+                response = new cn.lizongyi.shareaccount.response.ThemeConfigResponse();
+            }
+            return response;
+        } catch (Exception e) {
+            log.error("获取主题配置失败: {}", e.getMessage());
+            cn.lizongyi.shareaccount.response.ThemeConfigResponse response = new cn.lizongyi.shareaccount.response.ThemeConfigResponse();
+            return response;
+        }
+    }
+
+    /**
+     * 获取分享配置
+     * @return 分享配置
+     */
+    @Override
+    public cn.lizongyi.shareaccount.response.ShareConfigResponse getShareConfig() {
+        try {
+            cn.lizongyi.shareaccount.response.ShareConfigResponse response = getJsonValue(
+                Constants.SHARE_CONFIG,
+                cn.lizongyi.shareaccount.response.ShareConfigResponse.class,
+                null
+            );
+            if (response == null) {
+                response = new cn.lizongyi.shareaccount.response.ShareConfigResponse();
+            }
+            return response;
+        } catch (Exception e) {
+            log.error("获取分享配置失败: {}", e.getMessage());
+            cn.lizongyi.shareaccount.response.ShareConfigResponse response = new cn.lizongyi.shareaccount.response.ShareConfigResponse();
+            return response;
+        }
+    }
+
+    /**
+     * 更新配置值
+     * @param userId 用户ID（如果为null则更新全局配置）
+     * @param key 配置键名
+     * @param value 配置值
+     */
+    @Override
+    public void updateConfigValue(Long userId, String key, String value) {
+        try {
+            configMapper.updateConfigByKey(key, value);
+            log.info("配置更新成功: key={}, value={}", key, value);
+        } catch (Exception e) {
+            log.error("更新配置失败: key={}", key, e);
+            throw new RuntimeException("更新配置失败");
         }
     }
 }

@@ -28,12 +28,39 @@
     </view>
 
     <!-- 登录按钮 -->
-    <button class="login-btn" @click="onLogin" :disabled="isDisabled">{{ loginButtonText }}</button>
+    <button class="login-btn" @click="showSmsLoginPopup">{{ loginButtonText }}</button>
+
+    <!-- 微信登录按钮 - 仅微信小程序显示 -->
+    <!-- #ifdef MP-WEIXIN -->
+    <button class="wechat-login-btn" @click="onWechatLogin" :disabled="wechatDisabled">{{ wechatLoginText }}</button>
+    <!-- #endif -->
 
     <!-- 环境提示 -->
     <view class="env-tip" v-if="showEnvTip">
       <text class="env-tip-text">{{ envTipMessage }}</text>
     </view>
+      </view>
+    </view>
+
+    <!-- 手机号登录弹窗 -->
+    <view class="sms-popup-mask" v-if="showSmsLogin" @click="hideSmsLoginPopup">
+      <view class="sms-popup-card" @click.stop>
+        <view class="sms-popup-header">
+          <text class="sms-popup-title">手机号登录</text>
+          <text class="sms-popup-close" @click="hideSmsLoginPopup">✕</text>
+        </view>
+        <view class="sms-popup-body">
+          <view class="sms-input-wrapper">
+            <input type="number" v-model="phone" placeholder="请输入手机号" maxlength="11" class="sms-popup-input" />
+          </view>
+          <view class="sms-input-wrapper verify-wrapper">
+            <input type="number" v-model="smsCode" placeholder="请输入验证码" maxlength="6" class="sms-popup-input" />
+            <button class="send-code-btn" :disabled="sendCodeDisabled" @click="sendSmsCode">{{ sendCodeText }}</button>
+          </view>
+        </view>
+        <view class="sms-popup-footer">
+          <button class="sms-login-submit" @click="onLogin" :disabled="isDisabled">{{ isDisabled ? '登录中...' : '登录' }}</button>
+        </view>
       </view>
     </view>
   </view>
@@ -43,47 +70,30 @@
 export default {
   data() {
     return {
-      loginButtonText: '微信登录',
+      loginButtonText: '手机号登录(新用户)',
       agreed: false,
       isDisabled: false,
       showCountdown: false,
       failTime: 0,
       showEnvTip: false,
       envTipMessage: '',
-      isDevMode: process.env.NODE_ENV !== 'production' // 仅开发环境显示测试按钮
+      isDevMode: process.env.NODE_ENV !== 'production',
+      showSmsLogin: false,
+      phone: '',
+      smsCode: '',
+      sendCodeText: '发送验证码',
+      sendCodeDisabled: false,
+      countdown: 60,
+      wechatLoginText: '微信登录(老用户，即将下线)',
+      wechatDisabled: false
     };
   },
   onLoad() {
-    // 检查当前环境
     this.checkEnvironment();
   },
   methods: {
-    // 检查当前运行环境
     checkEnvironment() {
-      const platform = uni.getSystemInfoSync().platform;
-      console.log('当前运行平台:', platform);
-      
-      // 在微信开发者工具中，即使oauth为空也允许尝试登录
-      const isWechatDevtools = platform === 'devtools';
-      const oauthProviders = uni.getProvider({ service: 'oauth' }).oauth || [];
-      console.log('可用的OAuth提供商:', oauthProviders);
-      
-      // 非微信小程序环境提示
-      // 对于安卓和iOS设备，即使oauthProviders中没有找到'weixin'也允许尝试登录
-      if (!isWechatDevtools && platform !== 'android' && platform !== 'ios' && (!Array.isArray(oauthProviders) || oauthProviders.indexOf('weixin') === -1)) {
-        this.showEnvTip = true;
-        this.envTipMessage = '当前环境不支持微信登录，请在微信小程序中打开';
-        return false;
-      }
-      
-      // 非真机或开发者工具环境提示
-      if (platform !== 'devtools' && platform !== 'ios' && platform !== 'android') {
-        this.showEnvTip = true;
-        this.envTipMessage = `当前运行在${platform}环境，微信登录可能无法正常工作。建议在微信小程序环境中使用。`;
-        // 允许继续尝试登录
-        // return false;
-      }
-      
+      this.showEnvTip = false;
       return true;
     },
     
@@ -91,12 +101,175 @@ export default {
       this.agreed = e.detail.value.length > 0;
     },
 
-    onLogin() {
-      // 再次检查环境
-      if (!this.checkEnvironment()) {
+    showSmsLoginPopup() {
+      if (!this.agreed) {
+        uni.showToast({
+          title: '请先阅读并勾选协议内容',
+          icon: 'none',
+          duration: 3000
+        });
+        return;
+      }
+      this.showSmsLogin = true;
+    },
+
+    hideSmsLoginPopup() {
+      this.showSmsLogin = false;
+    },
+
+    sendSmsCode() {
+      if (!this.agreed) {
+        uni.showToast({
+          title: '请先阅读并勾选协议内容',
+          icon: 'none',
+          duration: 3000
+        });
         return;
       }
       
+      if (!this.phone || this.phone.length !== 11) {
+        uni.showToast({
+          title: '请输入正确的手机号',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+      
+      this.sendCodeDisabled = true;
+      this.countdown = 60;
+      
+      uni.request({
+        url: `${this.$backUrlConfig.baseUrl}${this.$backUrlConfig.endpoints.sms_send}`,
+        method: 'POST',
+        data: { phone: this.phone },
+        success: (res) => {
+          if (res.data.code == 200) {
+            uni.showToast({
+              title: '发送成功',
+              icon: 'success',
+              duration: 2000
+            });
+            this.startSendCountdown();
+          } else {
+            uni.showToast({
+              title: res.data.message || '发送失败',
+              icon: 'none',
+              duration: 2000
+            });
+            this.sendCodeDisabled = false;
+          }
+        },
+        fail: (err) => {
+          uni.showToast({
+            title: '发送失败，请稍后重试',
+            icon: 'none',
+            duration: 2000
+          });
+          this.sendCodeDisabled = false;
+        }
+      });
+    },
+    
+    startSendCountdown() {
+      const timer = setInterval(() => {
+        if (this.countdown <= 0) {
+          clearInterval(timer);
+          this.sendCodeText = '发送验证码';
+          this.sendCodeDisabled = false;
+        } else {
+          this.countdown--;
+          this.sendCodeText = `${this.countdown}秒后重发`;
+        }
+      }, 1000);
+    },
+
+    onLogin() {
+      if (!this.agreed) {
+        uni.showToast({
+          title: '请先阅读并勾选协议内容',
+          icon: 'none',
+          duration: 3000
+        });
+        return;
+      }
+      
+      if (!this.phone || this.phone.length !== 11) {
+        uni.showToast({
+          title: '请输入正确的手机号',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+      
+      if (!this.smsCode || this.smsCode.length !== 6) {
+        uni.showToast({
+          title: '请输入6位验证码',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+
+      this.isDisabled = true;
+      this.loginButtonText = '登录中...';
+
+      uni.request({
+        url: `${this.$backUrlConfig.baseUrl}${this.$backUrlConfig.endpoints.login_sms}`,
+        method: 'POST',
+        data: { phone: this.phone, code: this.smsCode },
+        success: (response) => {
+          const data = response.data;
+
+          if (data.code == 200 && data.data.token) {
+            const { token, expires_in, additionalId, thunder, canSendMessage } = data.data;
+            this.clearCache();
+            uni.setStorageSync('isGuest', false);
+            this.saveToken(token, expires_in, additionalId, thunder, canSendMessage);
+
+            this.checkLoginStatus().then(isLoggedIn => {
+              if (isLoggedIn) {
+                uni.showToast({
+                  title: '登录成功',
+                  icon: 'success',
+                  duration: 2000
+                });
+
+                setTimeout(() => {
+                  this.redirectToReturnPage();
+                }, 500);
+              } else {
+                throw new Error('Token验证失败');
+              }
+            }).catch(error => {
+              console.error('验证登录状态失败:', error);
+              this.handleLoginFailure(60);
+            });
+
+          } else {
+            console.error('登录接口返回错误:', data);
+            uni.showToast({
+              title: data.message || '登录失败',
+              icon: 'none',
+              duration: 2000
+            });
+            this.handleLoginFailure(60);
+          }
+        },
+        fail: (err) => {
+          console.error('请求登录接口失败:', err);
+          uni.showToast({
+            title: '请求登录接口失败',
+            icon: 'none',
+            duration: 2000
+          });
+          this.handleLoginFailure(60);
+        }
+      });
+    },
+
+    onWechatLogin() {
       if (!this.agreed) {
         uni.showToast({
           title: '请先阅读并勾选协议内容',
@@ -106,30 +279,24 @@ export default {
         return;
       }
 
-      this.isDisabled = true;
-      this.loginButtonText = '登录中...';
+      this.wechatDisabled = true;
+      this.wechatLoginText = '登录中...';
 
       uni.login({
         success: (loginRes) => {
           if (loginRes.code) {
-            const request = { code: loginRes.code };
-            
             uni.request({
               url: `${this.$backUrlConfig.baseUrl}${this.$backUrlConfig.endpoints.login_login}`,
               method: 'POST',
-              data: request,
+              data: { code: loginRes.code },
               success: (response) => {
-                console.log('登录接口响应:', response);
                 const data = response.data;
 
-                if (data.code == 200 && data.data.token && data.data.refresh_token) {
-                  // 登录成功处理
-                  const { token, refresh_token, expires_in, additionalId, thunder, canSendMessage, isNewUser } = data.data;
-                  // 清空缓存，确保新登录用户使用最新缓存
+                if (data.code == 200 && data.data.token) {
+                  const { token, expires_in, additionalId, thunder, canSendMessage } = data.data;
                   this.clearCache();
-                  // 保存登录状态，设置 isGuest 为 false
                   uni.setStorageSync('isGuest', false);
-                  this.saveToken(token, refresh_token, expires_in, additionalId, thunder, canSendMessage, isNewUser);
+                  this.saveToken(token, expires_in, additionalId, thunder, canSendMessage);
 
                   this.checkLoginStatus().then(isLoggedIn => {
                     if (isLoggedIn) {
@@ -147,76 +314,57 @@ export default {
                     }
                   }).catch(error => {
                     console.error('验证登录状态失败:', error);
-                    this.handleLoginFailure(60);
+                    this.handleWechatLoginFailure(60);
                   });
 
                 } else {
-                  console.error('登录接口返回错误:', data);
-                  this.handleLoginFailure(data.failTime || 60);
+                  console.error('微信登录接口返回错误:', data);
+                  this.handleWechatLoginFailure(data.failTime || 60);
                 }
               },
               fail: (err) => {
-                console.error('请求登录接口失败:', err);
-                
-                // 特殊错误处理
-                let errorMsg = '请求登录接口失败';
-                if (err.errMsg) {
-                  errorMsg += ': ' + err.errMsg;
-                }
-                
-                if (err.errMsg && err.errMsg.includes('url')) {
-                  errorMsg += '\n\n请检查：\n1. 微信公众平台中是否配置了合法域名\n2. API接口域名是否在白名单中';
-                }
-                
-                uni.showModal({
-                  title: '登录失败',
-                  content: errorMsg,
-                  showCancel: false
+                console.error('请求微信登录接口失败:', err);
+                uni.showToast({
+                  title: '请求登录接口失败',
+                  icon: 'none',
+                  duration: 2000
                 });
-                
-                this.handleLoginFailure(60);
+                this.handleWechatLoginFailure(60);
               }
             });
           } else {
             console.error('获取登录code失败:', loginRes.errMsg);
-            this.handleLoginFailure(60);
+            this.handleWechatLoginFailure(60);
           }
         },
         fail: (err) => {
-          // 增强错误日志
           console.error('调用uni.login失败:', err);
-          
           let errorMsg = '微信登录失败';
           if (err.errMsg) {
             errorMsg += ': ' + err.errMsg;
           }
-          
-          // 特殊错误处理
-          if (err.errMsg && err.errMsg.includes('appid')) {
-            errorMsg += '\n\n请检查：\n1. manifest.json中的AppID是否正确\n2. 微信公众平台中的AppID和AppSecret是否匹配';
-          } else if (err.errMsg && err.errMsg.includes('url')) {
-            errorMsg += '\n\n请检查：\n1. 微信公众平台中是否配置了合法域名\n2. API接口域名是否在白名单中';
-          }
-          
           uni.showModal({
             title: '登录失败',
             content: errorMsg,
             showCancel: false,
             success: () => {
-              // 重置登录按钮状态
-              this.loginButtonText = '微信登录';
-              this.isDisabled = false;
+              this.wechatLoginText = '微信登录';
+              this.wechatDisabled = false;
             }
           });
-          
-          this.handleLoginFailure(60);
+          this.handleWechatLoginFailure(60);
         }
       });
     },
 
-
-
-
+    handleWechatLoginFailure(failTime) {
+      this.wechatLoginText = `${failTime}秒后可重试`;
+      this.wechatDisabled = true;
+      setTimeout(() => {
+        this.wechatLoginText = '微信登录';
+        this.wechatDisabled = false;
+      }, failTime * 1000);
+    },
 
     handleLoginFailure(failTime) {
       this.loginButtonText = `${failTime}秒后可重试`;
@@ -231,7 +379,7 @@ export default {
       const timer = setInterval(() => {
         if (failTime <= 0) {
           clearInterval(timer);
-          this.loginButtonText = '微信登录';
+          this.loginButtonText = '登录';
           this.showCountdown = false;
           this.isDisabled = false;
         } else {
@@ -241,10 +389,9 @@ export default {
       }, 1000);
     },
 
-    saveToken(token, refresh_token, expires_in, additionalId, thunder, canSendMessage, isNewUser) {
+    saveToken(token, expires_in, additionalId, thunder, canSendMessage) {
       uni.setStorageSync('token', token);
       uni.setStorageSync('additionalId', additionalId);
-      uni.setStorageSync('refreshToken', refresh_token);
       const expireAt = Date.now() + expires_in * 1000;
       uni.setStorageSync('expireAt', expireAt);
 
@@ -253,7 +400,6 @@ export default {
 
       const app = getApp();
       app.globalData.token = token;
-      app.globalData.refreshToken = refresh_token;
       app.globalData.expireAt = expireAt;
       app.globalData.additionalId = additionalId;
       app.globalData.thunder = thunder;
@@ -261,11 +407,8 @@ export default {
     },
 
 
-    // 清空缓存
     clearCache() {
-      // 清空缓存
       uni.removeStorageSync('token');
-      uni.removeStorageSync('refreshToken');
       uni.removeStorageSync('additionalId');
       uni.removeStorageSync('expireAt');
       uni.removeStorageSync('thunder');
@@ -274,15 +417,13 @@ export default {
       uni.removeStorageSync('guideCard');
     },
 
-    // 跳转首页
     goHomeList() {
       uni.switchTab({
-        url: '/pages/firstpage/firstpage' // 改为首页地址
+        url: '/pages/firstpage/firstpage'
       });
     },
 
     redirectToReturnPage() {
-      // 首先检查我们在request.js中保存的重定向URL
       const redirectAfterLogin = uni.getStorageSync('redirectAfterLogin');
       if (redirectAfterLogin) {
         uni.removeStorageSync('redirectAfterLogin');
@@ -290,7 +431,6 @@ export default {
         return;
       }
       
-      // 兼容原有逻辑
       const returnPage = uni.getStorageSync('returnPage');
       if (returnPage && returnPage.path) {
         uni.removeStorageSync('returnPage');
@@ -304,14 +444,11 @@ export default {
         return;
       }
 
-      // 默认返回首页
       tryToSwitchOrRelaunch('/pages/firstpage/firstpage');
     },
 
     checkLoginStatus() {
       return new Promise((resolve) => {
-        // 这里可以请求一个需要鉴权的接口来确认token是否有效
-        // 为了简化，这里直接检查本地是否有token且未过期
         const token = uni.getStorageSync('token');
         const expireAt = uni.getStorageSync('expireAt');
         const isValid = token && expireAt && Date.now() < expireAt;
@@ -340,7 +477,6 @@ function tryToSwitchOrRelaunch(url) {
   align-items: center;
   position: relative;
   background-color: #f7f8fa;
-  padding: 24rpx;
   overflow: hidden;
 }
 
@@ -360,7 +496,7 @@ function tryToSwitchOrRelaunch(url) {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 15vh;
+  bottom: 10vh;
   display: flex;
   justify-content: center;
   z-index: 1;
@@ -448,6 +584,7 @@ function tryToSwitchOrRelaunch(url) {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  margin-bottom: 20rpx;
 }
 
 .checkbox-wrapper {
@@ -499,6 +636,151 @@ function tryToSwitchOrRelaunch(url) {
   transform: scale(0.985);
 }
 
+/* 手机号登录弹窗 */
+.sms-popup-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.sms-popup-card {
+  width: 600rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.15);
+}
+
+.sms-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.sms-popup-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333333;
+}
+
+.sms-popup-close {
+  font-size: 32rpx;
+  color: #999999;
+}
+
+.sms-popup-body {
+  padding: 32rpx;
+}
+
+.sms-input-wrapper {
+  margin-bottom: 20rpx;
+}
+
+.sms-input-wrapper.verify-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.sms-popup-input {
+  width: 100%;
+  height: 88rpx;
+  background: #ffffff;
+  border-radius: 44rpx;
+  padding: 0 32rpx;
+  font-size: 28rpx;
+  color: #333333;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  border: 2rpx solid #e9eef3;
+  box-sizing: border-box;
+}
+
+.sms-popup-input:focus {
+  border-color: #07c160;
+  box-shadow: 0 4rpx 16rpx rgba(7, 193, 96, 0.2);
+}
+
+.verify-wrapper .sms-popup-input {
+  flex: 1;
+}
+
+.sms-popup-footer {
+  padding: 0 32rpx 32rpx;
+}
+
+.sms-login-submit {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: linear-gradient(135deg, #07c160 0%, #05a054 100%);
+  color: #fff;
+  border: none;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  box-shadow: 0 8rpx 24rpx rgba(7, 193, 96, 0.28);
+}
+
+.sms-login-submit[disabled] {
+  background: #cccccc;
+  box-shadow: none;
+}
+
+/* 短信登录表单样式 */
+.sms-login-form {
+  width: 100%;
+  margin-bottom: 16rpx;
+}
+
+.input-group {
+  margin-bottom: 20rpx;
+}
+
+.verify-group {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.sms-input {
+  flex: 1;
+  height: 88rpx;
+  background: #ffffff;
+  border-radius: 44rpx;
+  padding: 0 32rpx;
+  font-size: 28rpx;
+  color: #333;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+
+.send-code-btn {
+  width: 200rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: linear-gradient(135deg, #07c160 0%, #05a054 100%);
+  color: #fff;
+  border: none;
+  border-radius: 44rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  padding: 0;
+  margin: 0;
+}
+
+.send-code-btn[disabled] {
+  background: #cccccc;
+  color: #ffffff;
+}
+
 .guest-btn {
   width: 100%;
   height: 96rpx;
@@ -519,6 +801,33 @@ function tryToSwitchOrRelaunch(url) {
 .guest-btn:active {
   opacity: 0.96;
   transform: scale(0.985);
+}
+
+.wechat-login-btn {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  background: linear-gradient(135deg, #07c160 0%, #05a054 100%);
+  color: #fff;
+  border: none;
+  border-radius: 48rpx;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  margin-top: 14rpx;
+  letter-spacing: 1rpx;
+  box-shadow: 0 12rpx 24rpx rgba(7, 193, 96, 0.28);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.wechat-login-btn:active {
+  opacity: 0.96;
+  transform: scale(0.985);
+}
+
+.wechat-login-btn[disabled] {
+  background: #cccccc;
+  color: #ffffff;
 }
 
 .env-tip {

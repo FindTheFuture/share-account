@@ -59,6 +59,9 @@
 		  }
 		  if (savedColor) { try { uni.setNavigationBarColor({ backgroundColor: savedColor, frontColor: '#ffffff' }) } catch (e) {} }
 		} catch (e) {}
+		
+		// 从后端获取主题配置
+		this.fetchThemeConfigFromServer()
 	},
 	onShow: function() {
 		console.log('App Show')
@@ -70,7 +73,41 @@
 		...mapMutations([
 			'setUniverifyLogin',
 			'setUniverifyErrorMsg'
-		])
+		]),
+		fetchThemeConfigFromServer() {
+			uni.request({
+				url: `${this.$backUrlConfig.baseUrl}${this.$backUrlConfig.endpoints.config_theme}`,
+				method: 'GET',
+				success: (res) => {
+					if (res.data.code == 200 && res.data.data) {
+						const themeData = res.data.data
+						if (themeData.primaryColor) {
+							this.setThemePrimaryColor(themeData.primaryColor)
+						}
+						if (themeData.appName) {
+							try { uni.setNavigationBarTitle({ title: themeData.appName }) } catch (e) {}
+						}
+					}
+				},
+				fail: (err) => {
+					console.error('获取主题配置失败:', err)
+				}
+			})
+		},
+		setThemePrimaryColor(color) {
+			try {
+				const c = (color || '').replace('#', '')
+				if (c.length < 6) return
+				const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16)
+				const luminance = (0.299 * r + 0.587 * g + 0.114 * b)
+				const frontColor = luminance > 186 ? '#000000' : '#ffffff'
+				if (typeof document !== 'undefined') {
+					document.documentElement.style.setProperty('--app-primary', color)
+				}
+				uni.setStorageSync('themePrimaryColor', color)
+				try { uni.setNavigationBarColor({ backgroundColor: color, frontColor: frontColor }) } catch (e) {}
+			} catch (e) {}
+		}
 	},
 	globalData: {
 		test: ''

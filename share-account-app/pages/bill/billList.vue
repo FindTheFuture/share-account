@@ -396,38 +396,6 @@ export default {
   
   beforeDestroy() {
   },
-
-  // 分享生命周期函数
-  onShareAppMessage(res) {
-    // 仅当来源为按钮（弹窗分享按钮）时，按账单分享
-    if (res && res.from === 'button') {
-      if (this.$refs.billListComponent && typeof this.$refs.billListComponent.getShareInfo === 'function') {
-        try {
-          // 强制账单分享（组件内部已在按钮点击时保存shareMemberId）
-          return this.$refs.billListComponent.getShareInfo(true);
-        } catch (error) {
-          console.error('组件分享信息获取失败:', error);
-        }
-      }
-    }
-    
-    // 兜底的默认分享信息（右上角菜单、非按钮触发）
-    return {
-      title: '分享给你一个账本',
-      path: '/pages/firstpage/firstpage',
-      imageUrl: 'https://shareaccount-1302778096.cos.ap-beijing.myqcloud.com/title.png'
-    };
-  },
-  // 朋友圈分享钩子（微信小程序）
-  onShareTimeline() {
-    const title = '分享给你一个账本';
-    const imageUrl = 'https://shareaccount-1302778096.cos.ap-beijing.myqcloud.com/title.png';
-    return {
-      title,
-      query: '',
-      imageUrl
-    };
-  },
   
   computed: {
     // 金额文本格式（分->元，仅格式化文本，不带单位）

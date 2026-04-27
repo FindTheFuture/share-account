@@ -14,8 +14,8 @@ public interface UserService {
     UserResponse findResponseById(Long id);
     User findByOpenid(String openid);
     UserResponse findResponseByOpenid(String openid, Integer queryFamily);
-    List<User> findByPhone(String phone);
-    List<User> findLikePhone(String phone);
+    List<UserResponse> findByPhone(String phone);
+    List<UserResponse> findLikePhone(String phone);
     QueryUserListResponse findUserList(QueryUserListRequest request);
     Boolean save(CreateUserRequest request);
     Boolean setParentUid(Long userId, Long parentUid);

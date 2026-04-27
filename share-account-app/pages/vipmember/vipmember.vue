@@ -11,6 +11,7 @@
           :uploadable="false"
           :show-edit-mask="false"
           :clickable="false"
+          size="182rpx"
         ></user-avatar>
       </view>
       <view class="user-details">
@@ -229,7 +230,7 @@
 
 <script>
   import UserAvatar from '@/components/user-avatar.vue'
-  import wechatPayment from '@/common/wechatPayment.js'
+  import payment from '@/common/payment.js'
   export default {
     components: {
       UserAvatar,
@@ -500,25 +501,25 @@
                 uni.showLoading({
                   title: '正在处理支付...'
                 })
-                
-                // 调用微信支付服务
-                const paymentResult = await wechatPayment.processPayment({
+
+                // 调用统一支付服务（根据平台自动选择微信/抖音/支付宝）
+                const paymentResult = await payment.processPayment({
                   packageId: pkg.id,
                   amount: pkg.price || 0,
-                  payment_type: 'WECHAT_PAY',
+                  payment_type: payment.isDouyin() ? 'DOUYIN_PAY' : 'WECHAT_PAY',
                   goods_name: pkg.name || '会员套餐',
                   goods_description: `${pkg.name || '会员套餐'}订阅服务`
                 })
-                
+
                 // 隐藏加载提示
                 uni.hideLoading()
-                
+
                 // 处理支付结果
                 this.handlePaymentResult(paymentResult, pkg)
               } catch (error) {
                 // 隐藏加载提示
                 uni.hideLoading()
-                
+
                 // 显示错误提示
                 uni.showToast({
                   title: error.message || '支付请求处理失败',

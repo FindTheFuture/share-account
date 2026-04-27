@@ -9,6 +9,7 @@ import cn.lizongyi.shareaccount.entity.User;
 import cn.lizongyi.shareaccount.entity.Ledger;
 import cn.lizongyi.shareaccount.entity.Account;
 import cn.lizongyi.shareaccount.enums.RoleTypeEnum;
+import cn.lizongyi.shareaccount.request.DouyinPayConfig;
 import cn.lizongyi.shareaccount.response.QueryFeatureListResponse;
 import cn.lizongyi.shareaccount.util.JacksonUtils;
 import cn.lizongyi.shareaccount.util.NumberUtil;
@@ -285,6 +286,31 @@ public class BaseHandler {
      */
     public String getWechatV3ApiV3Key() {
         return configService.getConfigValue(null, Constants.WECHAT_V3_API_V3_KEY);
+    }
+
+    // ================================= 抖音支付配置 =================================
+
+    /**
+     * 获取抖音支付配置（JSON格式）
+     */
+    public String getDouyinPayConfig() {
+        return configService.getConfigValue(null, Constants.DOUYIN_PAY_CONFIG);
+    }
+
+    /**
+     * 获取抖音支付配置并解析为对象
+     */
+    public DouyinPayConfig getDouyinPayConfigBean() {
+        String configJson = getDouyinPayConfig();
+        if (configJson == null || configJson.isEmpty()) {
+            return null;
+        }
+        try {
+            return JacksonUtils.strToBean(configJson, DouyinPayConfig.class);
+        } catch (Exception e) {
+            log.error("解析抖音支付配置失败: {}", e.getMessage(), e);
+            return null;
+        }
     }
 
     // ================================= JWT配置 =================================

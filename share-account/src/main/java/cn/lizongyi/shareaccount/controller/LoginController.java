@@ -1,8 +1,10 @@
 package cn.lizongyi.shareaccount.controller;
 
 import cn.lizongyi.shareaccount.request.LoginRequest;
+import cn.lizongyi.shareaccount.request.SmsLoginRequest;
 import cn.lizongyi.shareaccount.response.ApiResponse;
 import cn.lizongyi.shareaccount.services.LoginService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -75,6 +77,21 @@ public class LoginController {
             return ResponseEntity.ok(ApiResponse.success(result));
         } catch (Exception e) {
             log.error("游客升级失败", e);
+            return ResponseEntity.ok(ApiResponse.badRequest(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sms")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> smsLogin(@Valid @RequestBody SmsLoginRequest request) {
+        if (request == null || !StringUtils.hasText(request.getPhone()) || !StringUtils.hasText(request.getCode())) {
+            log.error("短信登录失败 参数不完整");
+            return ResponseEntity.ok(ApiResponse.badRequest("登录失败，请稍后再试"));
+        }
+        try {
+            Map<String, Object> loginResult = loginService.smsLogin(request.getPhone(), request.getCode());
+            return ResponseEntity.ok(ApiResponse.success(loginResult));
+        } catch (Exception e) {
+            log.error("短信登录失败", e);
             return ResponseEntity.ok(ApiResponse.badRequest(e.getMessage()));
         }
     }

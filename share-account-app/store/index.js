@@ -105,11 +105,9 @@ const store = createStore({
 		themePrimaryColor: (state) => state.themePrimaryColor,
 	},
 	actions: {
-		// vuex测试例使用
 		incrementAsync(context , payload) {
 		  context.commit('incrementTen',payload)
 		},
-		// lazy loading openid
 		getUserOpenId: async function({
 			commit,
 			state
@@ -121,7 +119,7 @@ const store = createStore({
 					uni.login({
 						success: (data) => {
 							commit('login')
-							setTimeout(function() { //模拟异步请求服务器获取 openid
+							setTimeout(function() {
 								const openid = '123456789'
 								console.log('uni.request mock openid[' + openid + ']');
 								commit('setOpenid', openid)
@@ -135,6 +133,36 @@ const store = createStore({
 					})
 				}
 			})
+		},
+		fetchThemeConfig: async function({ commit, state }) {
+			try {
+				const baseUrl = uni.$backUrlConfig?.baseUrl;
+				const res = await new Promise((resolve, reject) => {
+					uni.request({
+						url: `${baseUrl}/config/theme`,
+						method: 'GET',
+						success: (res) => {
+							if (res.data.code == 200) {
+								resolve(res.data.data)
+							} else {
+								reject(new Error(res.data.message || '获取主题配置失败'))
+							}
+						},
+						fail: (err) => {
+							reject(err)
+						}
+					})
+				})
+				
+				if (res.primaryColor) {
+					commit('setThemePrimaryColor', res.primaryColor)
+				}
+				
+				return res
+			} catch (e) {
+				console.error('获取主题配置失败:', e)
+				return null
+			}
 		}
 	}
 })

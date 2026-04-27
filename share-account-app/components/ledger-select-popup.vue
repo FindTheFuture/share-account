@@ -1,5 +1,5 @@
 <template>
-  <uni-popup ref="ledgerPopup" type="center" :mask-click="true" @maskClick="close">
+  <uni-popup ref="popup" type="center" :mask-click="true" @maskClick="close">
     <view class="popup-container">
       <view class="popup-header">
         <view class="title-with-icon">
@@ -89,6 +89,9 @@
       </view>
     </view>
   </uni-popup>
+
+  <!-- 联系人分享弹窗 -->
+  <ContactSharePopup ref="contactSharePopup" @select="onContactSelect" />
 </template>
 
 <script>
@@ -97,13 +100,15 @@ import backUrl from '@/common/back_url.js';
 import UniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 import UniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
 import UserAvatar from '@/components/user-avatar.vue';
+import ContactSharePopup from '@/components/contact-share-popup.vue';
 
 export default {
   name: 'LedgerSelectPopup',
   components: {
     UniIcons,
     UniPopup,
-    UserAvatar
+    UserAvatar,
+    ContactSharePopup
   },
   props: {
     selectedLedger: {
@@ -129,15 +134,16 @@ export default {
       ledgers: [],
       needRefreshLedgers: false,
       sharedGroups: [],
-      isGuest: false
+      isGuest: false,
+      selectedLedgerForShare: null
     };
   },
   methods: {
     async loadLedgers() {
       try {
-        const res = await request({ 
-          url: backUrl.endpoints.ledger_getByUser, 
-          method: 'GET' 
+        const res = await request({
+          url: backUrl.endpoints.ledger_getByUser,
+          method: 'GET'
         });
         if (res && Array.isArray(res)) {
           const normalLedgers = res.filter(ledger => ledger.status === 0);
@@ -223,10 +229,10 @@ export default {
       if (this.queryShared && this.sharedGroups.length === 0) {
         this.loadSharedLedgers();
       }
-      this.$refs.ledgerPopup.open();
+      this.$refs.popup.open();
     },
     close() {
-      this.$refs.ledgerPopup.close();
+      this.$refs.popup.close();
     },
     selectLedger(ledger) {
       this.$emit('select', ledger);
@@ -265,11 +271,36 @@ export default {
         });
         return;
       }
-      const id = ledger && (ledger.id || ledger.ledgerId);
-      if (!id) return;
-      uni.navigateTo({
-        url: `/pages/member/addMember?ledgerId=${id}`
-      });
+      this.selectedLedgerForShare = ledger;
+      this.$refs.contactSharePopup.open();
+    },
+    async onContactSelect(contact) {
+      if (!this.selectedLedgerForShare) return;
+      const ledger = this.selectedLedgerForShare;
+      try {
+        const res = await request({
+          url: backUrl.endpoints.chat_send,
+          method: 'POST',
+          data: {
+            toUserId: contact.userId,
+            type: 2,
+            content: JSON.stringify({
+              title: ledger.name || '账本分享',
+              desc: '点击查看账本详情',
+              ledgerId: ledger.id
+            })
+          }
+        });
+        if (res) {
+          uni.showToast({ title: '发送成功', icon: 'success' });
+        } else {
+          uni.showToast({ title: '发送失败', icon: 'none' });
+        }
+      } catch (e) {
+        console.error('发送账本分享失败', e);
+        uni.showToast({ title: '发送失败', icon: 'none' });
+      }
+      this.selectedLedgerForShare = null;
     },
     refreshIfNeeded() {
       if (this.needRefreshLedgers) {
@@ -658,42 +689,78 @@ export default {
   border-radius: 50% !important;
 }
 
-/* 移除朋友头像的背景色 */
-.section-title.shared-title .avatar-small .user-avatar-container {
+/* 更具体的选择器确保样式优先级 */
+.section-title.shared-title .avatar-small {
   width: 96rpx !important;
   height: 96rpx !important;
-  max-width: 96rpx !important;
-  max-height: 96rpx !important;
   overflow: hidden !important;
-  border-radius: 50% !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-}
-
-.section-title.shared-title .avatar-small .avatar-wrapper {
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  width: 96rpx !important;
-  height: 96rpx !important;
+  margin-right: 16rpx !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
   max-width: 96rpx !important;
   max-height: 96rpx !important;
-  overflow: hidden !important;
   border-radius: 50% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
 }
 
-.section-title.shared-title .avatar-small .avatar-img {
-  border-radius: 50% !important;
-  width: 96rpx !important;
-  height: 96rpx !important;
-  max-width: 96rpx !important;
-  max-height: 96rpx !important;
-  overflow: hidden !important;
-  object-fit: cover !important;
+.section-title.shared-title .avatar-small > user-avatar {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: #fff !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+}
+
+/* 使用 ::v-deep 穿透组件样式 */
+.section-title.shared-title .avatar-small ::v-deep .user-avatar-container,
+.section-title.shared-title .avatar-small ::v-deep view.user-avatar-container {
+    width: 88rpx !important;
+    height: 88rpx !important;
+    min-width: 88rpx !important;
+    min-height: 88rpx !important;
+    max-width: 88rpx !important;
+    max-height: 88rpx !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.section-title.shared-title .avatar-small ::v-deep .avatar-wrapper,
+.section-title.shared-title .avatar-small ::v-deep view.avatar-wrapper {
+    width: 88rpx !important;
+    height: 88rpx !important;
+    min-width: 88rpx !important;
+    min-height: 88rpx !important;
+    max-width: 88rpx !important;
+    max-height: 88rpx !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+.section-title.shared-title .avatar-small ::v-deep image.avatar-img,
+.section-title.shared-title .avatar-small ::v-deep .avatar-img,
+.section-title.shared-title .avatar-small ::v-deep image {
+    width: 88rpx !important;
+    height: 88rpx !important;
+    min-width: 88rpx !important;
+    min-height: 88rpx !important;
+    max-width: 88rpx !important;
+    max-height: 88rpx !important;
+    object-fit: cover !important;
+    object-position: center !important;
 }
 
 /* 调整共享标题布局，确保头像不遮挡文字 */

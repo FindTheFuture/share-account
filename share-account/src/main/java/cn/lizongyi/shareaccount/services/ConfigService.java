@@ -21,5 +21,14 @@ public interface ConfigService {
     
     // 获取JSON对象配置值
     <T> T getJsonValue(String key, Class<T> clazz, T defaultValue);
-    
+
+    // 获取主题配置
+    cn.lizongyi.shareaccount.response.ThemeConfigResponse getThemeConfig();
+
+    // 获取分享配置
+    cn.lizongyi.shareaccount.response.ShareConfigResponse getShareConfig();
+
+    // 更新配置值
+    void updateConfigValue(Long userId, String key, String value);
+
 }

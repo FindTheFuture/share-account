@@ -50,3 +50,28 @@ itbox/
 *.code-workspace
 *.sh
 design-system/
+
+# ============ Project Specific ============
+backups/
+docs/
+wgt/
+ShareAccount.sh
+package.json
+publish-wgt.js
+share-account-service.code-workspace
+
+# ============ Share Account App ============
+share-account-app/.hbuilderx/
+share-account-app/hybrid/
+share-account-app/windows/
+share-account-app/wxcomponents/
+share-account-app/changelog.md
+
+# ============ Share Account Backend ============
+share-account/.idea/
+share-account/.mvn/
+share-account/logs/
+share-account/target/
+share-account/.gitattributes
+share-account/.gitignore
+share-account/HELP.md

@@ -1,9 +1,8 @@
 <template>
-  <view 
-    :class="['custom-icon', iconClass]" 
+  <view
+    :class="['custom-icon', iconClass]"
     :style="computedStyle"
     @tap="handleClick"
-    @click="handleClick"
   ></view>
 </template>
 

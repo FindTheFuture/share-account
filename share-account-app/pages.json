@@ -45,6 +45,24 @@
             }
         },
         {
+            "path": "pages/contact/contact",
+            "style": {
+                "navigationBarTitleText": "联系人"
+            }
+        },
+        {
+            "path": "pages/contact/friendRequest",
+            "style": {
+                "navigationBarTitleText": "好友请求"
+            }
+        },
+        {
+            "path": "pages/contact/chat",
+            "style": {
+                "navigationBarTitleText": "聊天"
+            }
+        },
+        {
             "path": "pages/login/login",
             "style": {
                 "navigationBarTitleText": "登录"
@@ -359,6 +377,12 @@
                 "iconPath": "static/star.png",
                 "selectedIconPath": "static/star-active.png",
                 "text": "首页"
+            },
+            {
+                "pagePath": "pages/contact/contact",
+                "iconPath": "static/contact.png",
+                "selectedIconPath": "static/contact-active.png",
+                "text": "联系人"
             },
             {
                 "pagePath": "pages/mycenter/mycenter",

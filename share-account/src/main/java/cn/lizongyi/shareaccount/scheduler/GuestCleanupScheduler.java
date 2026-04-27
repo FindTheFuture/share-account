@@ -10,10 +10,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 
 /**
  * 游客清理定时任务：每天清理超过保留期的游客数据
+ * 如果有多个游客账号，必须保留最新登录的一个
  */
 @Slf4j
 @Component
@@ -71,25 +72,67 @@ public class GuestCleanupScheduler {
             return;
         }
 
+        List<User> guestUsers = new ArrayList<>();
+        for (User user : allUsers) {
+            if (user == null || user.getId() == null) {
+                continue;
+            }
+            if (baseHandler.isGuestUser(user.getId())) {
+                guestUsers.add(user);
+            }
+        }
+
+        if (guestUsers.isEmpty()) {
+            log.info("无游客用户，结束游客清理");
+            return;
+        }
+
+        log.info("发现 {} 个游客账号", guestUsers.size());
+
+        // 找出最新登录的游客账号（保留）
+        User latestGuest = null;
+        LocalDateTime latestLoginTime = null;
+        for (User guest : guestUsers) {
+            LocalDateTime lastLogin = guest.getLastLoginTime();
+            if (lastLogin != null) {
+                if (latestLoginTime == null || lastLogin.isAfter(latestLoginTime)) {
+                    latestLoginTime = lastLogin;
+                    latestGuest = guest;
+                }
+            }
+        }
+
+        // 如果所有游客都没有登录时间，保留ID最大的一个
+        if (latestGuest == null) {
+            for (User guest : guestUsers) {
+                if (latestGuest == null || guest.getId() > latestGuest.getId()) {
+                    latestGuest = guest;
+                }
+            }
+        }
+
+        log.info("保留最新的游客账号: userId={}, lastLoginTime={}", latestGuest.getId(), latestGuest.getLastLoginTime());
+
         int cleanedCount = 0;
 
-        for (User user : allUsers) {
+        for (User user : guestUsers) {
+            // 跳过需要保留的最新游客
+            if (user.getId().equals(latestGuest.getId())) {
+                continue;
+            }
+
+            Long userId = user.getId();
+            LocalDateTime lastLogin = user.getLastLoginTime();
+
+            // 如果是最新登录的游客且在保留期内，跳过
+            if (lastLogin != null && !lastLogin.isBefore(cutoff)) {
+                log.info("游客 userId={} 在保留期内(lastLogin={})，跳过清理", userId, lastLogin);
+                continue;
+            }
+
             try {
-                if (user == null || user.getId() == null) {
-                    continue;
-                }
-                Long userId = user.getId();
+                log.info("开始清理过期游客 userId={}, lastLoginTime={}", userId, lastLogin);
 
-                // 仅清理游客且超过保留期（按最后登录时间）
-                if (!baseHandler.isGuestUser(userId)) {
-                    continue;
-                }
-                LocalDateTime lastLogin = user.getLastLoginTime();
-                if (lastLogin == null || !lastLogin.isBefore(cutoff)) {
-                    continue;
-                }
-
-                // 删除与用户相关的账单（逻辑删除）
                 List<Bill> bills = billMapper.findByUserId(userId);
                 if (bills != null) {
                     for (Bill bill : bills) {

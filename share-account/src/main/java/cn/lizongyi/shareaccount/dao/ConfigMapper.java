@@ -3,6 +3,7 @@ package cn.lizongyi.shareaccount.dao;
 import cn.lizongyi.shareaccount.entity.Config;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -20,4 +21,7 @@ public interface ConfigMapper {
 
     @Select("SELECT * FROM config where user_id=#{userId} and `type` = #{type} order by create_time desc")
     List<Config> getConfigByUserIdAndType(Long userId, Integer type);
+
+    @Update("UPDATE config SET `value` = #{value}, create_time = NOW() WHERE user_id IS NULL AND `key` = #{key}")
+    int updateConfigByKey(String key, String value);
 }

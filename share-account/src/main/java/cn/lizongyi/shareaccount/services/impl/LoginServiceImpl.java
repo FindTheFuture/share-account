@@ -44,17 +44,8 @@ public class LoginServiceImpl implements LoginService {
     @Autowired
     private BaseHandler baseHandler;
 
-    // 新增：消息服务，用于在游客登录后推送系统提醒
     @Autowired
     private cn.lizongyi.shareaccount.services.MessageService messageService;
-
-    @Autowired
-    private cn.lizongyi.shareaccount.dao.MessageMapper messageMapper;
-
-    @Autowired
-    private cn.lizongyi.shareaccount.dao.UserMessageMapper userMessageMapper;
-
-    // 新增：用于示例账单注入所需的Mapper
     @Autowired
     private cn.lizongyi.shareaccount.dao.LedgerMapper ledgerMapper;
     @Autowired
@@ -64,12 +55,11 @@ public class LoginServiceImpl implements LoginService {
     @Autowired
     private cn.lizongyi.shareaccount.dao.BillMapper billMapper;
 
-    // 这块需要开发
-    private static final int login_fail_time = 60;  // 登录失败 等待时间
-    // 这是 我自己的登录token时间，不是微信的access_token,微信的在 WeChatAccessTokenService.class 类里
-    private static final int SESSION_EXPIRE_TIME = 3600; // 1小时（秒）
-    private static final int EXPIRES_IN = SESSION_EXPIRE_TIME * 24 * 29;     // 29天
-    private static final int REFRESH_EXPIRES_IN = SESSION_EXPIRE_TIME * 24 * 90;     // 30天刷新一次token
+    @Autowired
+    private cn.lizongyi.shareaccount.services.SmsService smsService;
+
+    // 微信登录、SMS登录 过期时间 30天
+    private static final int LOGIN_EXPIRES_IN = 3600 * 24 * 30;
 
     @Override
     public Map<String, Object> wechatLogin(String code) throws Exception {
@@ -137,15 +127,12 @@ public class LoginServiceImpl implements LoginService {
         // 获取设备信息（这里可以实现更复杂的逻辑）
         String deviceInfo = getDeviceInfo();
 
-        // 生成 JWT token 和刷新 token
-        String accessToken = jwtUtil.generateToken(openid, EXPIRES_IN);
-        String refreshToken = jwtUtil.generateToken(openid, REFRESH_EXPIRES_IN);
+        // 生成 JWT token
+        String accessToken = jwtUtil.generateToken(openid, LOGIN_EXPIRES_IN);
 
-        // 返回用户信息给前端
         Map<String, Object> response = new HashMap<>();
         response.put("token", accessToken);
-        response.put("refresh_token", refreshToken);
-        response.put("expires_in", REFRESH_EXPIRES_IN);
+        response.put("expires_in", LOGIN_EXPIRES_IN);
         response.put("additionalId", user.getId());
         response.put("thunder", baseHandler.getUserRole(user.getId()));
         response.put("canSendMessage", user.getCanSendMessage());
@@ -156,27 +143,7 @@ public class LoginServiceImpl implements LoginService {
 
     @Override
     public Map<String, Object> refreshToken(String oldRefreshToken) throws Exception {
-        log.info("开始刷新token");
-        // 解析旧的刷新 JWT
-        Claims claims = jwtUtil.extractAllClaims(oldRefreshToken);
-        String openid = claims.getSubject();
-
-        // 检查旧刷新 token 是否未过期
-        if (jwtUtil.isTokenExpired(oldRefreshToken)) {
-            throw new RuntimeException("刷新token已过期");
-        }
-
-        // 使用 JwtUtil 生成新的 JWT
-        String newAccessToken = jwtUtil.generateToken(openid, EXPIRES_IN);
-        String refreshToken = jwtUtil.generateToken(openid, REFRESH_EXPIRES_IN); // 刷新 token有效期长一些
-
-        // 返回用户信息给前端
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", newAccessToken);
-        response.put("refresh_token", refreshToken);
-        response.put("expires_in", REFRESH_EXPIRES_IN);
-
-        return response;
+        throw new RuntimeException("不再支持token刷新，请重新登录");
     }
 
     private String getDeviceInfo() {
@@ -201,12 +168,10 @@ public class LoginServiceImpl implements LoginService {
             User existing = baseHandler.getUserById(currentUserId);
             if (existing != null) {
                 userMapper.updateLastLoginTime(existing.getOpenid());
-                String accessToken = jwtUtil.generateToken(existing.getOpenid(), EXPIRES_IN);
-                String refreshToken = jwtUtil.generateToken(existing.getOpenid(), REFRESH_EXPIRES_IN);
+                String accessToken = jwtUtil.generateToken(existing.getOpenid(), LOGIN_EXPIRES_IN);
                 Map<String, Object> response = new java.util.HashMap<>();
                 response.put("token", accessToken);
-                response.put("refresh_token", refreshToken);
-                response.put("expires_in", REFRESH_EXPIRES_IN);
+                response.put("expires_in", LOGIN_EXPIRES_IN);
                 response.put("additionalId", existing.getId());
                 response.put("thunder", baseHandler.getUserRole(existing.getId()));
                 response.put("canSendMessage", existing.getCanSendMessage());
@@ -323,14 +288,12 @@ public class LoginServiceImpl implements LoginService {
             }
         }
 
-        // 生成 JWT token 和刷新 token
-        String accessToken = jwtUtil.generateToken(guestOpenid, EXPIRES_IN);
-        String refreshToken = jwtUtil.generateToken(guestOpenid, REFRESH_EXPIRES_IN);
+        // 生成 JWT token
+        String accessToken = jwtUtil.generateToken(guestOpenid, LOGIN_EXPIRES_IN);
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", accessToken);
-        response.put("refresh_token", refreshToken);
-        response.put("expires_in", REFRESH_EXPIRES_IN);
+        response.put("expires_in", LOGIN_EXPIRES_IN);
         response.put("additionalId", user.getId());
         response.put("thunder", baseHandler.getUserRole(user.getId()));
         response.put("canSendMessage", user.getCanSendMessage());
@@ -380,13 +343,11 @@ public class LoginServiceImpl implements LoginService {
         }
 
         // 生成新的令牌
-        String accessToken = jwtUtil.generateToken(openid, EXPIRES_IN);
-        String refreshToken = jwtUtil.generateToken(openid, REFRESH_EXPIRES_IN);
+        String accessToken = jwtUtil.generateToken(openid, LOGIN_EXPIRES_IN);
 
         Map<String, Object> response = new java.util.HashMap<>();
         response.put("token", accessToken);
-        response.put("refresh_token", refreshToken);
-        response.put("expires_in", REFRESH_EXPIRES_IN);
+        response.put("expires_in", LOGIN_EXPIRES_IN);
         response.put("additionalId", userId);
         response.put("thunder", baseHandler.getUserRole(userId));
         response.put("canSendMessage", CanSendMessageEnum.YES.getId());
@@ -405,6 +366,57 @@ public class LoginServiceImpl implements LoginService {
             log.warn("发送升级成功消息失败: {}", ex.getMessage());
         }
 
+        return response;
+    }
+
+    @Override
+    public Map<String, Object> smsLogin(String phone, String code) throws Exception {
+        log.info("开始短信登录流程: phone={}", phone);
+
+        boolean verified = smsService.verifySmsCode(phone, code, "login");
+        if (!verified) {
+            log.error("短信验证码验证失败: phone={}", phone);
+            throw new RuntimeException("验证码错误或已过期");
+        }
+
+        String phoneOpenid = "phone_" + phone;
+        User user = userMapper.findByOpenid(phoneOpenid);
+        if (user == null) {
+            user = new User();
+            user.setNickName(baseHandler.getDefaultNickName());
+            user.setOpenid(phoneOpenid);
+            user.setPhone(phone);
+            user.setCreateTime(LocalDateTime.now());
+            user.setLastLoginTime(LocalDateTime.now());
+            user.setSex(SexEnum.DEFAULT.getId());
+            user.setRole(RoleTypeEnum.USER.getId());
+            user.setValidIntegral(0);
+            user.setCanSendMessage(CanSendMessageEnum.YES.getId());
+            user.setNotityBill(12);
+
+            boolean saveUserSuccess = userMapper.insert(user) > 0;
+            if (saveUserSuccess) {
+                log.info("短信登录创建新用户id: {}", user.getId());
+                baseHandler.initializeTasksForUser(user.getId());
+            } else {
+                log.error("短信登录创建新用户失败: phone={}", phone);
+                throw new RuntimeException("登录失败，请稍后再试");
+            }
+        } else {
+            userMapper.updateLastLoginTime(phoneOpenid);
+            log.info("短信登录更新用户登录时间: phone={}", phone);
+        }
+
+        String accessToken = jwtUtil.generateToken(phoneOpenid, LOGIN_EXPIRES_IN);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", accessToken);
+        response.put("expires_in", LOGIN_EXPIRES_IN);
+        response.put("additionalId", user.getId());
+        response.put("thunder", baseHandler.getUserRole(user.getId()));
+        response.put("canSendMessage", user.getCanSendMessage());
+
+        log.info("短信登录成功: phone={}, userId={}", phone, user.getId());
         return response;
     }
 }

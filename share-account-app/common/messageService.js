@@ -355,10 +355,12 @@ const messageService = {
         const allAuthStatus = await this.checkAuthorization(allTemplateIds);
         
         // 首页首次打开时的特殊逻辑
+        // 注意：抖音小程序不支持订阅消息相关API，跳过此逻辑
+        // #ifndef MP-TOUTIAO
         if (pageName === 'firstpage') {
             // 获取微信实际的授权状态
             const weChatStatus = await this.getWeChatSubscriptionStatus();
-            
+
             // 检查消息订阅总开关是否关闭
             if (!weChatStatus.mainSwitch) {
                 console.log('消息订阅总开关关闭，直接打开设置页面');
@@ -376,20 +378,20 @@ const messageService = {
                     hourlyStatus: { isAuthorized: false, neverRemind: false }
                 };
             }
-            
+
             // 收集所有需要授权的模板ID
             const templatesToAuthorize = [];
-            
+
             for (const templateId of allTemplateIds) {
                 const authStatus = allAuthStatus[templateId];
                 // 安全地获取微信状态
                 const weChatItemStatus = weChatStatus.itemSettings && weChatStatus.itemSettings[templateId];
-                
+
                 // 如果用户设置了不再提醒，跳过
                 if (authStatus.neverRemind) {
                     continue;
                 }
-                
+
                 // 严格判断未授权的情况：
                 // 1. 微信状态为reject（用户明确拒绝）
                 // 2. 微信状态为ban（被微信禁止）
@@ -400,20 +402,21 @@ const messageService = {
                 // - 用户授权过但未勾选"总是保持以上选择"
                 const isWeChatRejected = weChatItemStatus === 'reject' || weChatItemStatus === 'ban';
                 const isNeedAuthFromBackend = authStatus.authorizeCount <= 0;
-                
+
                 if (isWeChatRejected || (!weChatItemStatus && isNeedAuthFromBackend)) {
                     templatesToAuthorize.push(templateId);
                 }
             }
-            
+
             console.log('检测到需要授权的模板数量:', templatesToAuthorize.length, '模板ID:', templatesToAuthorize);
-            
+
             // 如果有需要授权的模板，只显示一次弹窗
             if (templatesToAuthorize.length > 0) {
                 // 一次性请求所有需要授权的模板，传入已获取的授权状态避免重复查询
                 await this.showBatchAuthorizationDialog(templatesToAuthorize, allAuthStatus);
             }
         }
+        // #endif
         
         // 返回日报和小时报的状态（保持向后兼容）
         return {
@@ -587,6 +590,7 @@ const messageService = {
                 }
             }
             
+            // #ifndef MP-TOUTIAO
             // 如果有ban状态，直接打开设置页面
             if (hasBanStatus) {
                 console.log('准备打开微信设置页面');
@@ -605,6 +609,7 @@ const messageService = {
                 });
                 return [];
             }
+            // #endif
             
             // 收集所有需要授权的模板
             const templatesToCheck = allTemplateIds;

@@ -281,11 +281,14 @@
     },
     onLoad(options) {
       // 页面初次渲染后，组件内部进行默认账户自动选择（不打开弹窗）
-      this.$nextTick(() => {
-        if (this.$refs.ledgerPopup && this.$refs.ledgerPopup.initAutoSelect) {
+      // 兼容抖音小程序：等待组件挂载完成后再调用 initAutoSelect
+      this.waitForComponent('ledgerPopup').then(() => {
+        if (this.$refs.ledgerPopup && typeof this.$refs.ledgerPopup.initAutoSelect === 'function') {
           this.$refs.ledgerPopup.initAutoSelect();
         }
-        if (this.$refs.accountPopup && this.$refs.accountPopup.initAutoSelect) {
+      });
+      this.waitForComponent('accountPopup').then(() => {
+        if (this.$refs.accountPopup && typeof this.$refs.accountPopup.initAutoSelect === 'function') {
           this.$refs.accountPopup.initAutoSelect();
         }
       });
@@ -328,6 +331,25 @@
     onUnload() {
     },
     methods: {
+      // 等待组件就绪（兼容抖音小程序）
+      waitForComponent(refName) {
+        return new Promise((resolve) => {
+          let retries = 0;
+          const maxRetries = 10;
+          const check = () => {
+            if (this.$refs[refName]) {
+              resolve();
+            } else if (retries < maxRetries) {
+              retries++;
+              setTimeout(check, 100);
+            } else {
+              resolve();
+            }
+          };
+          check();
+        });
+      },
+
       // 设置图片预览容器的默认位置为页面最右侧中部
       setDefaultImagePosition() {
         // 获取系统信息
