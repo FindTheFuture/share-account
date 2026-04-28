@@ -15,7 +15,8 @@ public final class Constants {
     public static final String DEFAULT_USER_AVATAR = "default_user_avatar";  // 默认头像
     public static final String DEFAULT_BACKEND_URL = "default_backend_url";  // 默认后端url
     public static final String FEATURE_LIST = "feature_list";  // 我的-功能列表
-    
+    public static final String BILL_COUNT_SHOW = "bill_count_show";  // 账单数量显示阈值
+
     // COS配置
     public static final String COS_APP_ID = "cos.app-id";  // COS App ID
     public static final String COS_SECRET_ID = "cos.secret-id";  // COS Secret ID

@@ -16,13 +16,13 @@
         <view class="user-details">
           <view class="nickname">{{ userInfo.nickName || '未设置昵称' }}</view>
           <view class="phone">{{ userInfo.phone || '未绑定手机号' }}</view>
-          <view class="remaining-counts" @click.stop="navigateToVipMember">
+          <view v-if="billCount > billCountShow" class="remaining-counts" @click.stop="navigateToVipMember">
             <text class="count-item">AI识别剩余: {{ remainingAiCount }}次</text>
             <text class="count-item">PDF导出剩余: {{ remainingPdfCount }}次</text>
           </view>
         </view>
       </view>
-      <view class="member-level-icon" @click.stop="navigateToVipMember">
+      <view v-if="billCount > billCountShow" class="member-level-icon" @click.stop="navigateToVipMember">
         <custom-icon type="fufeihuiyuan" :size="32" color="#ffd700"></custom-icon>
       </view>
     </view>
@@ -105,7 +105,9 @@
       loadingUserInfo: false,
       loadingFeatureList: false,
       remainingAiCount: 0,
-      remainingPdfCount: 0
+      remainingPdfCount: 0,
+      billCount: 0,
+      billCountShow: 1
     }
   },
   onLoad() {
@@ -148,6 +150,8 @@
         this.userInfo = res;
         // 获取会员剩余次数
         this.getRemainingCounts();
+        // 获取账单数量
+        this.getBillCount();
       } catch (error) {
         console.error('获取用户信息出错:', error);
         uni.showToast({
@@ -156,6 +160,23 @@
         });
       } finally {
         this.loadingUserInfo = false;
+      }
+    },
+
+    // 获取账单数量
+    async getBillCount() {
+      try {
+        const res = await this.$request({
+          url: this.$backUrlConfig.endpoints.bill_count,
+          method: 'GET'
+        });
+        if (typeof res === 'number') {
+          this.billCount = res;
+        } else if (res && res.data && typeof res.data === 'number') {
+          this.billCount = res.data;
+        }
+      } catch (e) {
+        console.error('获取账单数量失败', e);
       }
     },
     

@@ -325,21 +325,60 @@ public class DailyReportScheduler {
     }
 
     // 聚合支出：仅统计 status=0 且 price<0，按 class_id 求和（绝对值）
+    // 如果 class 的 type=2（子分类），则把自己的支出合并到 parent_id 对应的 type=1 父分类
+    // 最终只返回 type=1 的父分类聚合数据
     private Map<Long, Long> aggregateExpenseByClass(List<Bill> bills) {
         Map<Long, Long> map = new HashMap<>();
         if (bills == null) return map;
+
+        // 第一步：先按原始 class_id 聚合支出
         for (Bill bill : bills) {
             if (bill == null) continue;
             if (bill.getStatus() != null && bill.getStatus() == 0) {
                 Long price = bill.getPrice();
                 if (price != null && price < 0) {
                     Long classId = bill.getClassId();
-                    long add = Math.abs(price);
-                    map.put(classId, map.getOrDefault(classId, 0L) + add);
+                    if (classId != null) {
+                        long add = Math.abs(price);
+                        map.put(classId, map.getOrDefault(classId, 0L) + add);
+                    }
                 }
             }
         }
-        return map;
+
+        // 第二步：获取所有涉及的 class 信息，构建 (classId -> parentId, type) 映射
+        Map<Long, ClassResponse> classInfoMap = new HashMap<>();
+        Set<Long> allClassIds = new HashSet<>(map.keySet());
+        for (Long classId : allClassIds) {
+            ClassResponse classEntity = classEntityService.selectById(classId);
+            if (classEntity != null) {
+                classInfoMap.put(classId, classEntity);
+            }
+        }
+
+        // 第三步：如果 class 的 type=2，把支出合并到 parentId
+        Map<Long, Long> finalMap = new HashMap<>();
+        for (Map.Entry<Long, Long> entry : map.entrySet()) {
+            Long classId = entry.getKey();
+            Long amount = entry.getValue();
+            ClassResponse classEntity = classInfoMap.get(classId);
+
+            if (classEntity != null && classEntity.getType() != null && classEntity.getType() == 2) {
+                // type=2 是子分类，合并到 parentId
+                Long parentId = classEntity.getParentId();
+                if (parentId != null) {
+                    finalMap.put(parentId, finalMap.getOrDefault(parentId, 0L) + amount);
+                } else {
+                    // 如果没有 parentId，保留自己（理论上不应该）
+                    finalMap.put(classId, finalMap.getOrDefault(classId, 0L) + amount);
+                }
+            } else {
+                // type=1 或 type=0 或未知类型，直接使用原始 classId
+                finalMap.put(classId, finalMap.getOrDefault(classId, 0L) + amount);
+            }
+        }
+
+        return finalMap;
     }
 
 

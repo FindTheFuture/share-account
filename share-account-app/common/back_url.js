@@ -54,6 +54,7 @@ const config = {
 		ledger_getSharedToMe: '/ledger/getSharedToMe',
 
 		// 账单相关接口
+		bill_count: '/bill/count',
 		bill_getById: '/bill/getById/',
 		bill_getByUserId: '/bill/getByUserId',
 		bill_getByLedgerId: '/bill/getByLedgerId',

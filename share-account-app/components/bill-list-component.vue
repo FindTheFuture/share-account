@@ -74,7 +74,7 @@
           <text class="popup-title">账单详情</text>
           <view class="popup-actions-header">
             <button v-if="!isGuest" class="action-text action-share breath-animation" @click="navigateToShareContact">分享</button>
-            <button class="action-text action-comment breath-animation" @click="openComments">评论</button>
+            <button v-if="!isGuest && billCount > billCountShow" class="action-text action-comment breath-animation" @click="openComments">评论</button>
              <custom-icon v-if="isCurrentUserOwner && currentBill && currentBill.status === 0" type="bianji" :size="21" color="#1989fa" @click="editBill" class="action-icon"></custom-icon>
              <custom-icon v-if="isCurrentUserOwner && currentBill && currentBill.status === 0" type="shanchu" :size="21" color="#ff4d4f" @click="deleteBill" class="action-icon"></custom-icon>
              <custom-icon v-if="isCurrentUserOwner && currentBill && currentBill.status === 1" type="qiyong" :size="23" color="#07c160" @click="enableBill" class="action-icon"></custom-icon>
@@ -241,7 +241,10 @@ export default {
       comments: [],
       loadingComments: false,
       newCommentText: '',
-      submittingComment: false
+      submittingComment: false,
+      // 账单数量相关
+      billCount: 0,
+      billCountShow: 1
     };
   },
   mounted() {
@@ -252,6 +255,7 @@ export default {
     // 延迟加载数据，确保组件完全初始化后再加载，避免重复加载
     setTimeout(() => {
       this.loadBillList();
+      this.loadBillCount();
     }, 100);
   },
   computed: {
@@ -334,6 +338,22 @@ export default {
       }
       const ownerId = this.currentBill.userId || '';
       uni.navigateTo({ url: `/pages/comment/comment?billId=${this.currentBill.id}` });
+    },
+    // 加载账单总数
+    async loadBillCount() {
+      try {
+        const res = await request({
+          url: `${this.$backUrlConfig.baseUrl}${this.$backUrlConfig.endpoints.bill_count}`,
+          method: 'GET'
+        });
+        if (typeof res === 'number') {
+          this.billCount = res;
+        } else if (res && res.data && typeof res.data === 'number') {
+          this.billCount = res.data;
+        }
+      } catch (e) {
+        console.error('加载账单数量失败', e);
+      }
     },
     // 加载账单列表
     loadBillList() {

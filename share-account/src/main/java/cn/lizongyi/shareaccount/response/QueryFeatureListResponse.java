@@ -26,6 +26,7 @@ public class QueryFeatureListResponse {
         private boolean isTabBar;
         private String color;
         private String role;
+        private Integer billCount;
     }
 
 }

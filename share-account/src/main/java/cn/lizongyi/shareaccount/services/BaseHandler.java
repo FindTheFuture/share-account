@@ -85,6 +85,10 @@ public class BaseHandler {
 
     @Lazy
     @Autowired
+    private BillService billService;
+
+    @Lazy
+    @Autowired
     private ClassEntityService classEntityService;
 
 
@@ -336,10 +340,32 @@ public class BaseHandler {
 
         Integer userRole = getUserRole(userId);
 
+        // 获取账单数量显示阈值配置
+        String billCountShowStr = configService.getConfigValue(null, Constants.BILL_COUNT_SHOW);
+        int billCountShowValue = 1;
+        if (billCountShowStr != null && !billCountShowStr.trim().isEmpty()) {
+            try {
+                billCountShowValue = Integer.parseInt(billCountShowStr.trim());
+            } catch (NumberFormatException e) {
+                log.warn("billCountShow 配置解析失败，使用默认值1: {}", billCountShowStr);
+            }
+        }
+        final int billCountShow = billCountShowValue;
+
+        // 获取用户账单数量
+        int userBillCountValue = billService.countByUserId(userId);
+        final int userBillCount = userBillCountValue;
+
         // 普通用户只能看到一部分功能
         if(userRole == RoleTypeEnum.USER.getId()){
-            List<QueryFeatureListResponse.FeatureItem> squareList = response.getSquare().stream().filter(s -> s.getRole().contains(userRole.toString())).toList();
-            List<QueryFeatureListResponse.FeatureItem> stripList = response.getStrip().stream().filter(s -> s.getRole().contains(userRole.toString())).toList();
+            List<QueryFeatureListResponse.FeatureItem> squareList = response.getSquare().stream()
+                    .filter(s -> s.getRole().contains(userRole.toString()))
+                    .filter(s -> s.getBillCount() == null || s.getBillCount() <= 0 || userBillCount > billCountShow && s.getBillCount() > billCountShow)
+                    .toList();
+            List<QueryFeatureListResponse.FeatureItem> stripList = response.getStrip().stream()
+                    .filter(s -> s.getRole().contains(userRole.toString()))
+                    .filter(s -> s.getBillCount() == null || s.getBillCount() <= 0 || userBillCount > billCountShow && s.getBillCount() > billCountShow)
+                    .toList();
 
             response.setSquare(squareList);
             response.setStrip(stripList);

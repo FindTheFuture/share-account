@@ -354,5 +354,19 @@ public class BillController {
         }
     }
 
+    /**
+     * 获取当前用户的账单总数
+     * @return 账单总数
+     */
+    @GetMapping("/count")
+    public ResponseEntity<Integer> getBillCount() {
+        Long userId = baseHandler.getUserId();
+        if (userId == null || userId <= 0) {
+            return ResponseEntity.ok(0);
+        }
+        int count = billService.countByUserId(userId);
+        return ResponseEntity.ok(count);
+    }
+
 
 }

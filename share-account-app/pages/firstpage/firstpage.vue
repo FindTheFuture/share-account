@@ -305,6 +305,7 @@ export default {
         selectedLedger: null, // 当前选中的账本
         isLoading: false, // 加载状态
         isFromLedgerManage: false, // 是否从账本管理页面返回
+        isAutoSelectingLedger: false, // 是否正在自动选择账本（由initAutoSelect触发）
         remainingAiCount: 0, // AI剩余次数
 
         
@@ -472,7 +473,9 @@ export default {
     // 先确保账本已选中，再加载数据
     await this.waitForLedgerPopupReady();
     if (this.$refs.ledgerPopup && typeof this.$refs.ledgerPopup.initAutoSelect === 'function') {
+      this.isAutoSelectingLedger = true;
       await this.$refs.ledgerPopup.initAutoSelect();
+      this.isAutoSelectingLedger = false;
     }
     // 无论是否有选中的账本，都重新加载数据
     // 确保登录后能获取最新数据
@@ -491,9 +494,6 @@ export default {
       uni.showShareMenu({ withShareTicket: true });
       // #endif
     } catch (e) { /* ignore */ }
-    
-    // 获取AI剩余次数
-    this.fetchRemainingAiCount();
   },
   
   onReady() {
@@ -643,25 +643,6 @@ export default {
     },
 
     /**
-     * 获取AI剩余识别次数
-     */
-    async fetchRemainingAiCount() {
-      try {
-        const res = await this.$request({
-          url: backUrl.endpoints.userMember_getRemainingAiCount,
-          method: 'GET',
-        });
-        if (res && typeof res === 'number') {
-          this.remainingAiCount = res;
-        }
-      } catch (error) {
-        console.error('获取AI剩余次数失败:', error);
-        // 出错时设置为0
-        this.remainingAiCount = 0;
-      }
-    },
-
-    /**
      * 等待 ledgerPopup 组件就绪
      * 在 onShow 时组件可能还未挂载，需要多次尝试
      */
@@ -769,8 +750,7 @@ export default {
 
       // 构建要执行的Promise数组
       const promises = [
-        this.fetchMessageData(),
-        this.fetchRemainingAiCount()
+        this.fetchMessageData()
       ];
 
       // 如果有选中的账本，添加账本相关的数据加载
@@ -1128,8 +1108,11 @@ export default {
       this.closeDrawer();
       // 更新时间范围参数，设置为最近一年
       this.updateTimeRange();
-      // 加载账单和预算数据
-      this.loadAllData();
+      // 如果是自动选择账本（initAutoSelect触发），不重复加载数据
+      // 如果是用户手动选择账本，则重新加载数据
+      if (!this.isAutoSelectingLedger) {
+        this.loadAllData();
+      }
     },
 
     // 跳转到添加账单页面

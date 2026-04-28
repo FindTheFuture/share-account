@@ -61,8 +61,8 @@
           "<uses-permission android:name=\"android.permission.WRITE_SMS\"/>",
           "<uses-permission android:name=\"android.permission.RECEIVE_USER_PRESENT\"/>"
         ],
-        "versionName": "1.0.1",
-        "versionCode": 1
+        "versionName": "1.0.4",
+        "versionCode": 5
       },
       "ios": {
         "UIBackgroundModes": [
@@ -72,8 +72,8 @@
           "baidumap",
           "iosamap"
         ],
-        "versionName": "1.0.1",
-        "versionCode": 1
+        "versionName": "1.0.4",
+        "versionCode": 5
       },
       "sdkConfigs": {
         "speech": {
